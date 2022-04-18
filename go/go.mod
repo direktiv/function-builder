@@ -1,4 +1,4 @@
-module github.com/direktiv/apps/go/pkg/apps
+module github.com/direktiv/apps/go
 
 go 1.17
 
