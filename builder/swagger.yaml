@@ -1,0 +1,57 @@
+swagger: "2.0"
+info:
+  description: Description for APPNAME
+  title: APPNAME
+  version: 1.0.0
+consumes:
+- application/json
+produces:
+- application/json
+schemes:
+- http
+paths:
+  /:
+    post:
+      parameters:
+        - name: since
+          in: query
+          type: integer
+          format: int64
+        - name: limit
+          in: query
+          type: integer
+          format: int32
+          default: 20
+      # direktiv code generation is configured here
+      x-direktiv:  
+        cmds:
+          - Type: http
+            Cmd: 
+              Http: post
+          - Type: http
+            Cmd: 
+              Http: Get
+      responses:
+        200:
+          description: list the todo operations
+          schema:
+            # direktiv input values need to be defined here
+            type: object
+            properties: 
+              myvalue: 
+                type: string
+        default:
+          description: generic error response
+          schema:
+            $ref: "#/definitions/error"
+definitions:
+  error:
+    type: object
+    required:
+      - message
+    properties:
+      code:
+        type: integer
+        format: int64
+      message:
+        type: string
