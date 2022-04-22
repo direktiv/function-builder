@@ -515,7 +515,6 @@ func runCmd(cmdString string, envs []string,
 	var rj interface{}
 	err = json.Unmarshal(b, &rj)
 	if err != nil {
-		ri.Logger().Errorf("can not use output %s as response: %v", output, err)
 		rj = apps.ToJSON(o.String())
 	} 
     ir[resultKey] = rj

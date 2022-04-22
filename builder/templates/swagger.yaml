@@ -1,0 +1,68 @@
+swagger: "2.0"
+info:
+  description: Description for APPNAME
+  title: APPNAME
+  version: 1.0.0
+consumes:
+- application/json
+produces:
+- application/json
+schemes:
+- http
+paths:
+  /:
+    post:
+      parameters:
+        - name: body
+          in: body
+          schema:
+            type: object
+            required:
+              - name
+            properties:
+              name:
+                type: string
+                example: YourName
+      # direktiv code generation is configured here
+      x-direktiv:  
+        cmds:
+        - action: exec
+          exec: echo 'Hello {{ .Name }}'
+        output: |
+          {
+            "greeting": "{{ index (index . "cmd0") "result" }}"
+          }
+      responses:
+        200:
+          description: nice greeting
+          schema:
+            type: object
+            additionalProperties: {}
+            example: 
+              greeting: Hello YourName
+        default:
+          description: generic error response
+          headers:
+            Direktiv-ErrorCode:
+              type: string
+            Direktiv-ErrorMessage:
+              type: string
+          schema:
+            $ref: "#/definitions/error"
+definitions:
+  direktivFile:
+    type: object
+    x-go-type:
+      type: DirektivFile
+      import:
+        package: github.com/direktiv/apps/go/pkg/apps 
+  error:
+    type: object
+    required:
+      - errorCode
+      - errorMessage
+    properties:
+      errorCode:
+        type: string
+      errorMessage:
+        type: string

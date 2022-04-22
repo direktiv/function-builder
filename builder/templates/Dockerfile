@@ -9,9 +9,8 @@ COPY models src/models/
 COPY restapi src/restapi/
 
 RUN cd src && \
-    ls -la restapi && \
     export CGO_LDFLAGS="-static -w -s" && \
-    go build -tags osusergo,netgo -o /application cmd/jens-server/main.go; 
+    go build -tags osusergo,netgo -o /application cmd/APPNAME-server/main.go; 
 
 FROM ubuntu:21.04
 
@@ -19,5 +18,5 @@ COPY --from=build /application /bin/application
 
 EXPOSE 8080
 
-CMD ["/bin/application"]
+CMD ["/bin/application", "--port=8080", "--host=0.0.0.0"]
 

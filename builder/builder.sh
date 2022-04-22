@@ -12,15 +12,15 @@ function generate_app() {
 
     VERSION=`echo $1 | sed -n "s/^.*_\(.*\).yaml$/\1/p"`
 
-    echo "using swagger file $1, version $VERSION"
+    echo "using version $1"
 
     if [[ "$2" == "custom" ]]; then
-        swagger generate server -C templates/server_custom.yaml --target=/tmp/app -f /tmp/app/$1
+        swagger generate server -C templates/server_custom.yaml --target=/tmp/app/$1 -f /tmp/app/$1/swagger.yaml
     else
-        swagger generate server -C templates/server.yaml --target=/tmp/app -f /tmp/app/$1
+        swagger generate server -C templates/server.yaml --target=/tmp/app/$1 -f /tmp/app/$1/swagger.yaml
     fi
 
-    cd /tmp/app/ && go mod tidy && \
+    cd /tmp/app/$1 && go mod tidy && \
         go get github.com/go-openapi/runtime && \
         go get github.com/jessevdk/go-flags && \
         go get github.com/direktiv/apps/go/pkg/apps
@@ -35,11 +35,14 @@ function init_app() {
         return 126
     fi
 
-    cp templates/Dockerfile /tmp/app
+    mkdir -p /tmp/app/v1.0.0
+    sed "s/APPNAME/$1/g" templates/Dockerfile > /tmp/app/v1.0.0/Dockerfile
 
-    mkdir -p /tmp/app
-    sed "s/APPNAME/$1/g" /tmp/swagger.yaml > /tmp/app/swagger_v1.0.0.yaml
-    cd  /tmp/app/ && go mod init $1
+    sed "s/APPNAME/$1/g" templates/run.sh > /tmp/app/v1.0.0/run.sh
+    chmod 755 /tmp/app/v1.0.0/run.sh
+
+    sed "s/APPNAME/$1/g" templates/swagger.yaml > /tmp/app/v1.0.0/swagger.yaml
+    cd  /tmp/app/v1.0.0/ && go mod init $1
 
 }
 
