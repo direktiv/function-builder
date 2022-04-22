@@ -12,46 +12,126 @@ schemes:
 paths:
   /:
     post:
+      produces:
+        - application/json
       parameters:
-        - name: since
-          in: query
-          type: integer
-          format: int64
-        - name: limit
-          in: query
-          type: integer
-          format: int32
-          default: 20
+        - name: body
+          in: body
+          schema:
+            type: object
+            required:
+              - names
+            properties:
+              hello:
+                type: string
+                default: myname
+              names: 
+                type: array
+                items: 
+                  type: string
+              runit:
+                type: array
+                items: 
+                  type: object
+                  properties:
+                    what:
+                      type: string
+                    filejens:
+                      $ref: "#/definitions/direktivFile"
       # direktiv code generation is configured here
       x-direktiv:  
+        debug: true
         cmds:
-          - Type: http
-            Cmd: 
-              Http: post
-          - Type: http
-            Cmd: 
-              Http: Get
+        # file handling
+        - action: exec
+          exec: echo jens
+          error: my.small.error
+          output: /tmp/kk
+        # single commands
+          # - action: exec
+          #   exec: |-
+          #     bash -c 'echo { \\\"hello\\\": \\\"{{ .Hello }}\\\"  > /tmp/kk }; echo DONE!!!'
+          #   error: my.small.error
+          #   output: /tmp/kk
+            # continue: true
+          # - action: exec
+          #   exec: echo Hello2 {{ .Hello }}
+          #   env: ["jens=gerke", "1={{ .Hello }}"]
+        # output: |
+        #   {
+        #     {{ $cmd :=  (index . "cmd0") }}
+        #     "myvalue": "{{ index $cmd "result" }}"
+        #   }
+
+        # foreach
+          # - action: foreach
+          #   loop: .Names
+          #   exec: '{{ .Item }}'
+          #   env: ["jens=gerke", "1={{ .Body.Hello }}"]
+        
+
+        # http request
+          # - action: http
+          #   url: http://www.direktiv.io
+          #   method: get
+          #   # headers: 
+          #   #   - jens: sss
+          #   #   - sdd: sddd
+          #   # username: hello
+          #   # password: world
+          #   # insecure: true 
+          #   # errorNo200: true
+          #   # continue: true
+          # - action: http
+          #   url: http://www.direktiv.io
+          #   method: get
+          #   headers: 
+          #     - jens: sss
+          #     - sdd: sddd
+          #   username: hello
+          #   password: world
+          #   insecure: true 
+          #   errorNo200: false
+          # - action: foreachHttp
+          #   url: http://www.direktiv.io
+          #   loop: .Names
+          #   method: get
+
       responses:
         200:
           description: list the todo operations
           schema:
-            # direktiv input values need to be defined here
             type: object
-            properties: 
-              myvalue: 
-                type: string
+            additionalProperties: {}
+        
+          # schema:
+          #   type: object
+          #   properties: 
+          #     myvalue: 
+          #       type: string
         default:
           description: generic error response
+          headers:
+            Direktiv-ErrorCode:
+              type: string
+            Direktiv-ErrorMessage:
+              type: string
           schema:
             $ref: "#/definitions/error"
 definitions:
+  direktivFile:
+    type: object
+    x-go-type:
+      type: DirektivFile
+      import:
+        package: github.com/direktiv/apps/go/pkg/apps 
   error:
     type: object
     required:
-      - message
+      - errorCode
+      - errorMessage
     properties:
-      code:
-        type: integer
-        format: int64
-      message:
+      errorCode:
+        type: string
+      errorMessage:
         type: string

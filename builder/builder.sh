@@ -14,11 +14,16 @@ function generate_app() {
 
     echo "using swagger file $1, version $VERSION"
 
-    swagger generate server -C templates/server.yaml --target=/tmp/app -f /tmp/app/$1
+    if [[ "$2" == "custom" ]]; then
+        swagger generate server -C templates/server_custom.yaml --target=/tmp/app -f /tmp/app/$1
+    else
+        swagger generate server -C templates/server.yaml --target=/tmp/app -f /tmp/app/$1
+    fi
 
     cd /tmp/app/ && go mod tidy && \
         go get github.com/go-openapi/runtime && \
-        go get github.com/jessevdk/go-flags
+        go get github.com/jessevdk/go-flags && \
+        go get github.com/direktiv/apps/go/pkg/apps
 
 }
 
@@ -30,17 +35,19 @@ function init_app() {
         return 126
     fi
 
+    cp templates/Dockerfile /tmp/app
+
     mkdir -p /tmp/app
     sed "s/APPNAME/$1/g" /tmp/swagger.yaml > /tmp/app/swagger_v1.0.0.yaml
     cd  /tmp/app/ && go mod init $1
 
 }
 
-echo $1
-
 if [[ "$1" == "init" ]]; then
     init_app $2
-elif [[ "$1" == "generate" ]]; then
+elif [[ "$1" == "gen-custom" ]]; then
+    generate_app $2 custom
+elif [[ "$1" == "gen" ]]; then
     generate_app $2 
 else
     echo "Strings are not equal."
