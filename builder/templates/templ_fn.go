@@ -1,5 +1,9 @@
 package {{.Package}}
 
+{{- $printDebug := false }}
+
+{{- if eq .Name "Post" }}
+
 import (
 	"fmt"
 	"html/template"
@@ -20,11 +24,12 @@ const (
 	headersKey = "headers"
 )
 
+var sm sync.Map
+
 {{- $direktiv := index .Extensions "x-direktiv" }}
 {{- $commands := (index $direktiv "cmds") }}
 {{- $debug := (index $direktiv "debug") }}
 
-{{- $printDebug := false }}
 {{- if ne $debug nil }}
 	{{- $printDebug = $debug }}
 {{- end }}
@@ -35,7 +40,7 @@ const (
 	riErr = "io.direktiv.ri.error"
 )
 
-func DirektivHandle(params PostParams) middleware.Responder {
+func PostDirektivHandle(params PostParams) middleware.Responder {
 
 	{{- if and .SuccessResponse.Schema }}
 	var resp {{ .SuccessResponse.Schema.GoType }}
@@ -50,13 +55,18 @@ func DirektivHandle(params PostParams) middleware.Responder {
 	if err != nil {
 		return generateError(riErr, err)
 	}
+
+	ctx, cancel := context.WithCancel(params.HTTPRequest.Context())
+	sm.Store(*params.DirektivActionID, cancel)
+	defer sm.Delete(params.DirektivActionID)
+
 	{{/* command section */}}
 	{{- $length := len $commands }}
 	responses := make(map[string]map[string]interface{}, {{ $length }})
 
 	{{- range $i,$e := $commands }}
 
-	ret, err = runCommand{{ $i }}(params, ri)
+	ret, err = runCommand{{ $i }}(ctx, params, ri)
 	responses["cmd{{ $i }}"] = ret
 
 	if err != nil && {{ if ne .continue nil }}!{{ .continue }}{{ else }}true{{ end }} {
@@ -106,7 +116,8 @@ func DirektivHandle(params PostParams) middleware.Responder {
 {{- if eq $action "exec" }}
 
 // exec
-func runCommand{{ $i }}(params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
+func runCommand{{ $i }}(ctx context.Context, 
+		params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
 
 	ir := make(map[string]interface{})
 	ir[successKey] = false
@@ -133,7 +144,7 @@ func runCommand{{ $i }}(params PostParams, ri *apps.RequestInfo) (map[string]int
 		envs = append(envs, env{{ $i }})
 	{{- end }} 
 
-	return runCmd(cmd, envs, output, silent, print, ri)
+	return runCmd(ctx, cmd, envs, output, silent, print, ri)
 
 }
 
@@ -145,7 +156,8 @@ type LoopStruct{{ $i }} struct {
 	Item interface{}
 }
 
-func runCommand{{ $i }}(params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
+func runCommand{{ $i }}(ctx context.Context, 
+		params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
 
 	ri.Logger().Infof("foreach command over {{ .loop }}")
 
@@ -181,7 +193,7 @@ func runCommand{{ $i }}(params PostParams, ri *apps.RequestInfo) (map[string]int
 			envs = append(envs, env{{ $i }})
 		{{- end }} 
 
-		r, _ := runCmd(cmd, envs, output, silent, print, ri)
+		r, _ := runCmd(ctx, cmd, envs, output, silent, print, ri)
 		cmds[fmt.Sprintf("foreach%d", a)] = r
 
 	}
@@ -199,7 +211,8 @@ type LoopStruct{{ $i }} struct {
 	Item interface{}
 }
 
-func runCommand{{ $i }}(params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
+func runCommand{{ $i }}(ctx context.Context, 
+		params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
 
 	ri.Logger().Infof("foreach http request over {{ .loop }}")
 
@@ -270,7 +283,8 @@ func runCommand{{ $i }}(params PostParams, ri *apps.RequestInfo) (map[string]int
 {{- else }}
 
 // http request
-func runCommand{{ $i }}(params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
+func runCommand{{ $i }}(ctx context.Context,
+	params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
 
 	ri.Logger().Infof("running http request")
 
@@ -332,43 +346,6 @@ func runCommand{{ $i }}(params PostParams, ri *apps.RequestInfo) (map[string]int
 
 // end commands
 {{- end }}
-
-func templateString(tmplIn string, data interface{}) (string, error) {
-
-
-	{{- if $printDebug }}
-	fmt.Printf("template to use: %+v\n", tmplIn)
-	{{- end}}
-
-	tmpl, err :=template.New("base").Funcs(sprig.FuncMap()).Parse(tmplIn)
-	if err != nil {
-		{{- if $printDebug }}
-		fmt.Printf("template failed: %+v\n", err)
-		{{- end}}
-		return "", err
-	}
-
-	var b bytes.Buffer
-	err = tmpl.Execute(&b, data)
-	if err != nil {
-		{{- if $printDebug }}
-		fmt.Printf("template failed: %+v\n", err)
-		{{- end}}
-		return "", err
-	}
-
-	{{- if $printDebug }}
-	fmt.Printf("template output: %+v\n", html.UnescapeString(b.String()))
-	{{- end}}
-
-	v := b.String()
-	if (v == "<no value>") {
-		v = ""
-	}
-
-	return html.UnescapeString(v), nil
-	
-}
 
 func doHttpRequest(method, u, user, pwd string, 
 	headers map[string]string, 
@@ -456,73 +433,6 @@ func doHttpRequest(method, u, user, pwd string,
 	
 }
 
-func runCmd(cmdString string, envs []string,
-	output string, silent, print bool, ri *apps.RequestInfo) (map[string]interface{}, error) {
-
-	ir := make(map[string]interface{})
-	ir[successKey] = false
-
-	a, err := shellwords.Parse(cmdString)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-
-	// get the binary and args
-	bin := a[0]
-	argsIn := []string{}
-	if len(a) > 1 {
-		argsIn = a[1:]
-	}
-
-	logger := io.Discard
-	if !silent {
-		logger = ri.LogWriter()
-	}
-
-	var o bytes.Buffer
-	mw := io.MultiWriter(os.Stdout, &o, logger)
-	
-	cmd := exec.Command(bin, argsIn...)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
-	cmd.Dir = ri.Dir()
-	cmd.Env = append(os.Environ(), envs...)
-
-	if print {
-		ri.Logger().Infof("running command %v", cmd)
-	}
-
-	err = cmd.Run()
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-
-	// successful here
-	ir[successKey] = true
-
-	// output check
-	b := o.Bytes()
-	if output != "" {
-		b, err = os.ReadFile(output)
-		if err != nil {
-			ir[resultKey] = err.Error()
-			return ir, err
-		}
-	}
-
-	var rj interface{}
-	err = json.Unmarshal(b, &rj)
-	if err != nil {
-		rj = apps.ToJSON(o.String())
-	} 
-    ir[resultKey] = rj
-
-	return ir, nil
-
-}
-
 func generateError(code string, err error) *PostDefault {
 
 	d := NewPostDefault(0).WithDirektivErrorCode(code).
@@ -539,3 +449,60 @@ func generateError(code string, err error) *PostDefault {
 
 	return d
 }
+
+
+func HandleShutdown() {
+	// nothing for generated functions
+}
+
+{{- else }}
+
+{{- $direktiv := index .Extensions "x-direktiv" }}
+
+func DeleteDirektivHandle(params DeleteParams) middleware.Responder {
+
+	actionId := *params.DirektivActionID
+	defer sm.Delete(actionId)
+
+	if actionId == "" {
+		return NewDeleteOK()
+	}
+
+	ri, err := apps.RequestinfoFromRequest(params.HTTPRequest)
+	if err != nil {
+		fmt.Println("can not create ri from request")
+		return NewDeleteOK()
+	}	
+
+	cancel, ok := sm.Load(actionId)
+	if !ok {
+		ri.Logger().Infof("can not load context for action id: %v", err)
+		return NewDeleteOK()
+	}
+
+	ri.Logger().Infof("cancelling action id %v", actionId)
+
+	cf, ok := cancel.(context.CancelFunc)
+	if !ok {
+		ri.Logger().Infof("can not get cancel function for action id: %v", err)
+		return NewDeleteOK()
+	}
+
+	cf()
+
+	cmd, err := templateString("{{ $direktiv.cancel }}", params)
+	if err != nil {
+		ri.Logger().Infof("can not template cancel command: %v", err)
+		return NewDeleteOK()
+	}
+
+	_, err = runCmd(context.Background(), cmd, []string{}, "", false, true, ri)
+	if err != nil {
+		ri.Logger().Infof("error running cancel function: %v", err)
+	}
+
+	return NewDeleteOK()
+
+}
+
+{{- end }}

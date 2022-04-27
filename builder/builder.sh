@@ -6,7 +6,7 @@ export PATH=$PATH:/usr/lib/go-1.17/bin
 function generate_app() {
 
     if [ -z "$1" ]; then
-        echo "swagger file not provided"
+        echo "version not provided"
         return 126
     fi
 
@@ -20,10 +20,11 @@ function generate_app() {
         swagger generate server -C templates/server.yaml --target=/tmp/app/$1 -f /tmp/app/$1/swagger.yaml
     fi
 
-    cd /tmp/app/$1 && go mod tidy && \
+    cd /tmp/app/$1 && \
         go get github.com/go-openapi/runtime && \
         go get github.com/jessevdk/go-flags && \
-        go get github.com/direktiv/apps/go/pkg/apps
+        go get github.com/direktiv/apps/go/pkg/apps && \
+        go mod tidy
 
 }
 
@@ -46,6 +47,9 @@ function init_app() {
 
 }
 
+
+echo "runing builder with args $@"
+
 if [[ "$1" == "init" ]]; then
     init_app $2
 elif [[ "$1" == "gen-custom" ]]; then
@@ -53,8 +57,6 @@ elif [[ "$1" == "gen-custom" ]]; then
 elif [[ "$1" == "gen" ]]; then
     generate_app $2 
 else
-    echo "Strings are not equal."
+    echo "unknown builder command"
 fi
-
-# echo ${@:2}
 

@@ -44,9 +44,102 @@ func configureFlags(api *{{.APIPackageAlias}}.{{ pascalize .Name }}API) {
   // api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{ ... }
 }
 
+
+// out.errCode = resp.Header.Get("Direktiv-ErrorCode")
+// out.errMsg = resp.Header.Get("Direktiv-ErrorMessage")
+func errorAsJSON(err errors.Error) []byte {
+	b, _ := json.Marshal(struct {
+		Code    int32  `json:"errorCode"`
+		Message string `json:"errorMessage"`
+	}{err.Code(), err.Error()})
+	return b
+}
+
+func asHTTPCode(input int) int {
+	if input >= 600 {
+		return errors.DefaultHTTPCode
+	}
+	return input
+}
+
+func flattenComposite(errs *errors.CompositeError) *errors.CompositeError {
+	var res []error
+	for _, er := range errs.Errors {
+		switch e := er.(type) {
+		case *errors.CompositeError:
+			if len(e.Errors) > 0 {
+				flat := flattenComposite(e)
+				if len(flat.Errors) > 0 {
+					res = append(res, flat.Errors...)
+				}
+			}
+		default:
+			if e != nil {
+				res = append(res, e)
+			}
+		}
+	}
+	return errors.CompositeValidationError(res...)
+}
+
+func addErrorHeaders(rw http.ResponseWriter, code, message string) {
+
+  rw.Header().Add("Direktiv-ErrorCode", code)
+  rw.Header().Add("Direktiv-ErrorMessage", message)
+
+}
+
+// modified version of the openapi error function
+// https://github.com/go-openapi/errors/blob/8b5b7790aa74a2148bf29be0d24e1f455fdbc706/api.go
+func serveError(rw http.ResponseWriter, r *http.Request, err error) {
+
+  rw.Header().Set("Content-Type", "application/json")
+	switch e := err.(type) {
+	case *errors.CompositeError:
+		er := flattenComposite(e)
+		// strips composite errors to first element only
+		if len(er.Errors) > 0 {
+			serveError(rw, r, er.Errors[0])
+		} else {
+			// guard against empty CompositeError (invalid construct)
+			serveError(rw, r, nil)
+		}
+	case *errors.MethodNotAllowedError:
+		rw.Header().Add("Allow", strings.Join(err.(*errors.MethodNotAllowedError).Allowed, ","))
+		rw.WriteHeader(asHTTPCode(int(e.Code())))
+    addErrorHeaders(rw, "io.direktiv.method", err.Error())
+		if r == nil || r.Method != http.MethodHead {
+			_, _ = rw.Write(errorAsJSON(e))
+		}
+	case errors.Error:
+		value := reflect.ValueOf(e)
+		if value.Kind() == reflect.Ptr && value.IsNil() {
+			rw.WriteHeader(http.StatusInternalServerError)
+			_, _ = rw.Write(errorAsJSON(errors.New(http.StatusInternalServerError, "Unknown error")))
+			return
+		}
+    addErrorHeaders(rw, "io.direktiv.unfit", fmt.Sprintf("%s (%v)", e.Error(), e.Code()))
+		rw.WriteHeader(asHTTPCode(int(e.Code())))
+		if r == nil || r.Method != http.MethodHead {
+			_, _ = rw.Write(errorAsJSON(e))
+		}
+	case nil:
+    addErrorHeaders(rw, "io.direktiv.unknown", "Unknown error")
+		rw.WriteHeader(http.StatusInternalServerError)
+		_, _ = rw.Write(errorAsJSON(errors.New(http.StatusInternalServerError, "Unknown error")))
+	default:
+    addErrorHeaders(rw, "io.direktiv.error", err.Error())
+		rw.WriteHeader(http.StatusInternalServerError)
+		if r == nil || r.Method != http.MethodHead {
+			_, _ = rw.Write(errorAsJSON(errors.New(http.StatusInternalServerError, err.Error())))
+		}
+	}
+
+}
+
 func configureAPI(api *{{.APIPackageAlias}}.{{ pascalize .Name }}API) http.Handler {
   // configure the api here
-  api.ServeError = errors.ServeError
+  api.ServeError = serveError
 
   // Set your custom logger if needed. Default one is log.Printf
   // Expected interface func(string, ...interface{})
@@ -127,7 +220,7 @@ func configureAPI(api *{{.APIPackageAlias}}.{{ pascalize .Name }}API) http.Handl
      return {{.Package}}.{{ pascalize .Name }}NotImplemented()
   {{ else }}
     {{- if .Authorized}}, principal {{if .PrincipalIsNullable }}*{{ end }}{{.Principal}}{{end}}) middleware.Responder {
-      return operations.DirektivHandle(params)
+      return operations.{{- pascalize .Name }}DirektivHandle(params)
   {{ end -}}
     })
   {{- end }}

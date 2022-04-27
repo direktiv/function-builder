@@ -10,6 +10,30 @@ import (
 {{ imports .DefaultImports }}
 )
 
-func DirektivHandle(params PostParams) middleware.Responder {
+
+{{- if eq .Name "Post" }}
+
+func PostDirektivHandle(params PostParams) middleware.Responder {
+
+	actionID := *params.DirektivActionID
+	fmt.Printf("run action id: %s\n", actionID)
+
 	return NewPostOK()
 }
+
+func HandleShutdown() {
+	// called when the function is getting destroyed
+}
+
+{{- else }}
+
+func DeleteDirektivHandle(params DeleteParams) middleware.Responder {
+
+	actionID := *params.DirektivActionID
+	fmt.Printf("delete action id: %s\n", actionID)
+
+	return NewDeleteOK()
+}
+
+{{- end }}
+

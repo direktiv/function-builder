@@ -13,7 +13,7 @@ layout:
       target: "{{ joinFilePath .Target .ServerPackage }}"
       file_name: "embedded_spec.go"
     - name: server
-      source: asset:serverServer
+      source: templates/templ_server.go
       target: "{{ joinFilePath .Target .ServerPackage }}"
       file_name: "server.go"
     - name: builder
@@ -30,6 +30,10 @@ layout:
       target: "{{ joinFilePath .Target .ModelPackage }}"
       file_name: "{{ (snakize (pascalize .Name)) }}.go"
   operations:
+    - name: direktiv-helper
+      source: templates/templ_helper.go
+      target: "{{ if gt (len .Tags) 0 }}{{ joinFilePath .Target .ServerPackage .APIPackage .Package  }}{{ else }}{{ joinFilePath .Target .ServerPackage .Package  }}{{ end }}"
+      file_name: "direktiv_helper.go"
     - name: direktiv
       source: templates/templ_fn.go
       target: "{{ if gt (len .Tags) 0 }}{{ joinFilePath .Target .ServerPackage .APIPackage .Package  }}{{ else }}{{ joinFilePath .Target .ServerPackage .Package  }}{{ end }}"
