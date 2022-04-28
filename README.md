@@ -98,7 +98,7 @@ docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/action-builder init myapp
 
 ### Configuring the action
 
-The action builder is using the swagger file to generate the source code. There are two methods defined. The `post` method is used to execute the action and the delete method should be used to cancel a running action. 
+The action builder is using the swagger file to generate the source code. There are two methods defined. The `post` method is used to execute the action and the `delete` method should be used to cancel a running action. 
 
 The parameter section defines the input for the action. The headers `Direktiv-ActionID` and `Direktiv-TempDir` are provided during a call from a Direktiv flow. The `body` section is sent to the action to be consumed. Please read the [swagger documentation](https://swagger.io/docs/specification/2-0/describing-request-body/) for further details how to configure input parameters in the body of a request. The default action requires a `name` attribute. 
 
