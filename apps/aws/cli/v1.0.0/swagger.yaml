@@ -1,0 +1,112 @@
+swagger: "2.0"
+info:
+  description: Run AWS CLI commands in direktiv
+  title: aws-cli
+  version: 1.0.0
+  x-direktiv:
+    container: direktiv/aws-cli
+    category: cloud
+    long-description: This is a longer description for the application aws-cli
+consumes:
+- application/json
+produces:
+- application/json
+schemes:
+- http
+paths:
+  /: 
+    delete:
+      parameters:
+        - name: Direktiv-ActionID
+          in: header
+          type: string
+      x-direktiv:
+        cancel: echo 'cancelling action id {{ .DirektivActionID }}'
+      responses:
+        200:
+    post:
+      parameters:
+        - name: Direktiv-ActionID
+          in: header
+          type: string
+          description: |
+            direktiv action id is an UUID. 
+            For development it can be set to 'development'
+        - name: Direktiv-TempDir
+          in: header
+          type: string
+          description: |
+            direktiv temp dir is the working directory for that request
+            For development it can be set to e.g. '/tmp'
+        - name: body
+          in: body
+          schema:
+            type: object
+            required:
+              - access-key
+              - secret-key
+            properties:
+              access-key:
+                type: string
+                example: BBQJTV4BBQJTNWBBQJY5
+                description: Amazon access key ID 
+              secret-key:
+                type: string
+                example: ezaEezaEs0q5WezaEs0q5ezaEs0q5aEs0ezaEs0q5
+                description: Amazon secret access key 
+              region: 
+                type: string
+                example: us-east-1
+                default: us-east-1
+                description: Region in which to execute command
+              commands: 
+                type: array
+                items:
+                  type: string
+                example: 
+                  - ec2 create-security-group --group-name secgroup1 --description mySecGroup
+                  - ec2 authorize-security-group-ingress --group-name secgroup1 --cidr 0.0.0.0/0 --protocol tcp --port 443
+               
+      # direktiv code generation is configured here
+      x-direktiv:  
+        cmds:
+        - action: exec
+          exec: echo '{{ fileExists "jens" }}'
+        output: |
+          {
+            "greeting": "{{ index (index . "cmd0") "result" }}"
+          }
+      responses:
+        200:
+          description: nice greeting
+          schema:
+            type: object
+            additionalProperties: {}
+            example: 
+              greeting: Hello YourName
+        default:
+          description: generic error response
+          headers:
+            Direktiv-ErrorCode:
+              type: string
+            Direktiv-ErrorMessage:
+              type: string
+          schema:
+            $ref: "#/definitions/error"
+definitions:
+  direktivFile:
+    type: object
+    x-go-type:
+      type: DirektivFile
+      import:
+        package: github.com/direktiv/apps/go/pkg/apps 
+  error:
+    type: object
+    required:
+      - errorCode
+      - errorMessage
+    properties:
+      errorCode:
+        type: string
+      errorMessage:
+        type: string

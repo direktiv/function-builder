@@ -1,4 +1,44 @@
-# Direktiv Action Builder
+ # Direktiv Service Builder
+
+ The [Direktiv](https://github.com/direktiv/direktiv) service builder is a code generator based on [Swagger](https://swagger.io/) to turn a command-line application or even a script into a webservice. These webservices can be used as functions within a [Direktiv](https://github.com/direktiv/direktiv) flow.
+
+<p style="margin-left: auto; margin-right: auto; width: 30%; height: 30%">
+<img src="docs/assets/overview.png">
+</p>
+
+The configuration is based on a `swagger.yaml`. This file is following the specification and has extensions which enables the builder to convert a script or command-line application into a service. The configuration is as simple as possible and the builder is able to compile the information in a runnable webservice. 
+
+# Documentation
+
+- [Getting Started](https://docs.direktiv.io/latest/getting_started/helloworld/)
+- [Examples](https://docs.direktiv.io/latest/examples/greeting/)
+
+# Talk to us!
+
+- [Open Source Support Channel on Slack](https://direktivio.slack.com/archives/C02JQUH1A01)
+- [Open Source Support Channel on Discord](https://discord.gg/VjF6wn4)
+
+
+# Code of Conduct
+
+We have adopted the [Contributor Covenant](https://github.com/direktiv/.github/blob/master/CODE_OF_CONDUCT.md) code of conduct.
+
+# Contributing
+
+Any feedback and contributions are welcome. Read our [contributing guidelines](https://github.com/direktiv/.github/blob/master/CONTRIBUTING.md) for details.
+
+# License
+
+Distributed under the Apache 2.0 License. See `LICENSE` for more information.
+
+# See Also
+
+* The [direktiv.io](https://direktiv.io/) website.
+* The direktiv [documentation](https://docs.direktiv.io/).
+* The direktiv [blog](https://blog.direktiv.io/).
+
+
+<!-- # Direktiv Action Builder
 
 During a flow execution, [Direktiv](https://github.com/direktiv/direktiv) is utilizing containers to execute actions. Although there are many actions already available sometimes it is required to write custom actions. 
 
@@ -430,6 +470,6 @@ Direktiv sends a DELETE request if an action has been cancelled. It is up to the
 
 TODO
 
-
+ -->
 
 
