@@ -274,7 +274,7 @@ x-direktiv:
     env: ["HELLO=world", "VALUE={{ .Hello }}"]
 ```
 
-If a command generates a JSON output file it can be set as the response for this command. At the end of the command the action builder will read this file and uses it as the response for this command. 
+If a command generates a JSON output file it can be set as the response for this command using the `ouput` attribute. At the end of the command the action builder will read this file and uses it as the response for this command. 
 
 ```yaml
 - action: exec
