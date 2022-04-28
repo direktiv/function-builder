@@ -262,7 +262,7 @@ x-direktiv:
     exec: bash -c 'ls -la | grep lib'
 ```
 
-This logging of the command can be configured with the attributes `silent` and `print`. If `silent` is set to true the command does not log its output to Direktiv's log output. If `print` is set to true the command to be executed will be printed to Direktiv's logs. This is usefule if the command uses secrets on the command line. Additionally environmment variables can be defined as well. For all attributes templating can be used as well.
+This logging of the command can be configured with the attributes `silent` and `print`. If `silent` is set to true the command does not log its output to Direktiv's log output. If `print` is set to true the command to be executed will be printed to Direktiv's logs. This is useful if the command uses secrets on the command line. Additionally environmment variables can be defined as well. For all attributes templating can be used as well.
 
 ```yaml
 x-direktiv:  
