@@ -2,7 +2,7 @@
 
 During a flow execution, [Direktiv](https://github.com/direktiv/direktiv) is utilizing containers to execute actions. Although there are many actions already available sometimes it is required to write custom actions. 
 
-Custom functions are often built by combining other pieces of code together, and this action builder tool can assist you generate the necessary source code for them. In most situations, no development is required, but it is possible to supply custom code to the builder and have it generate the needed wrapper functions.
+Custom functions are often built by combining other pieces of code together, and this action builder tool can assist you to generate the necessary source code for them. In most situations, no development is required, but it is possible to supply custom code to the builder and have it generate the needed wrapper functions.
 
 The action builder is built on OpenAPI, which serves as a standard to generate and execute the actions.
 
@@ -13,6 +13,8 @@ The action builder is built on OpenAPI, which serves as a standard to generate a
 ```
 docker run -v `pwd`:/tmp/app direktiv/action-builder init myapp
 ```
+
+- Tweak the configuration to do what you need it to do.
 
 - Generate the source code
 
@@ -60,11 +62,11 @@ states:
 
 ## Documentation
 
-The action buil process is a two step process. The first step is to initialise the application and the second step is to generate trhe source code. 
+The action build process is a two step process. The first step is to initialise the application and the second step is to generate the source code. 
 
 ### Init an action
 
-The first step is to initialize the action with the init command. It is important to map the folder where the action should reside into the ap builder container. The directory in the container is `/tmp/app`.
+The first step is to initialize the action with the init command. It is important to map the folder where the action should reside into the app builder container. The directory in the container is `/tmp/app`.
 
 ```
 docker run -v `pwd`:/tmp/app direktiv/action-builder init myapp
@@ -96,12 +98,12 @@ docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/action-builder init myapp
 
 ### Configuring the action
 
-The action builder is using the swagger file to generate the source code. There are two methods defined. The `post` method is executing the action and the delete method can be used to cancel a running action. 
+The action builder is using the swagger file to generate the source code. There are two methods defined. The `post` method is used to execute the action and the delete method should be used to cancel a running action. 
 
-The parameter section defines the input for the action. The headers `Direktiv-ActionID` and `Direktiv-TempDir` are provided during a call from a Direktiv flow. The `bodz` section is send to the action to be consumed. Please read the (swagger documentation)[https://swagger.io/docs/specification/2-0/describing-request-body/] for further details how to configure input parameters in the body of a request. The default action requires a `name` attribute. 
+The parameter section defines the input for the action. The headers `Direktiv-ActionID` and `Direktiv-TempDir` are provided during a call from a Direktiv flow. The `body` section is sent to the action to be consumed. Please read the [swagger documentation](https://swagger.io/docs/specification/2-0/describing-request-body/) for further details how to configure input parameters in the body of a request. The default action requires a `name` attribute. 
 
 ```yaml
-post:
+    post:
       parameters:
         - name: Direktiv-ActionID
           in: header
@@ -137,7 +139,7 @@ If attributes are not defined in the input section they are not available in tem
     additionalProperties: {}
 ```
 
-There is one special attribute for the input parameters and this the type `DirektivFile`. Direktiv can provide files to actions based on [variables](https://docs.direktiv.io/v0.6.1/getting_started/persistent-data/#demo) but sometimes the actions need a file, e.g. a small shell script or a token where a variable is not really needed. This type reads the string input and creates a file with the name provided.
+There is one special attribute for the input parameters and this has the type `DirektivFile`. Direktiv can provide files to actions based on [variables](https://docs.direktiv.io/v0.6.1/getting_started/persistent-data/#demo) but sometimes the actions need a file, e.g. a small shell script or a token where a variable is not really needed. This type reads the string input and creates a file with the name provided.
 
 ```yaml
 - name: body
@@ -173,7 +175,7 @@ x-direktiv:
     exec: sleep 10
 ```
 
-This example would execute two commands, echo and sleep. The commands can use variables via [go templates](https://pkg.go.dev/text/template) and [sprig](http://masterminds.github.io/sprig/). The variables are based on the input parameters for the action. In the default action the input parameter is `name` so it can be used within the commands. *The parameters can be defined lower-case but have to be used upper-case, e.g. input `name` is `Name` in templates*. All go tmeplate commands are supported so even if/else statements can be used. A debug mode is available to see the templates and data for the data parsing in case the action is not returning the expected result (`run.sh` is recommended for debugging).
+This example would execute two commands, echo and sleep. The commands can use variables via [go templates](https://pkg.go.dev/text/template) and [sprig](http://masterminds.github.io/sprig/). The variables are based on the input parameters for the action. In the default action the input parameter is `name` so it can be used within the commands. *The parameters can be defined lower-case but have to be used title-case, e.g. input `name` is `Name` in templates*. All go template commands are supported so even if/else statements can be used. A debug mode is available to see the templates and data for the data parsing in case the action is not returning the expected result (`run.sh` is recommended for debugging).
 
 ```yaml
 x-direktiv:
@@ -353,7 +355,7 @@ The `http` request action type is a simple method to do a request to backend sys
 
 Additionally to the basic http atributes (url, method, headers), the http command provides additional attribues to set. It provides basic authentication via the `username` and `password` atributes and if the backend uses self-signed certificates the `insecure` flag can be set. The `errNo200` field defines if status codes larger that 299 should be treated as errors. 
 
-For POST and PUT request there are two ways to send data to the backend service. It can be either deinfed in plain-text in a `data` attribute or in base64 for binary data. 
+For POST and PUT request there are two ways to send data to the backend service. It can be either defined in plain-text in a `data` attribute or in base64 for binary data. 
 
 *Plain Text POST Example*
 ```yaml
@@ -396,7 +398,7 @@ x-direktiv:
 
 ## Generating the action
 
-After configuring the action the source code can be generated with the g`gen` command. The command needs an additional argument which is the version number of the action to build. For the default init it is `v1.0.0.`. 
+After configuring the action the source code can be generated with the `gen` command. The command needs an additional argument which is the version number of the action to build. For the default init it is `v1.0.0.`. 
 
 ```
 docker run -v `pwd`:/tmp/app direktiv/action-builder gen v1.0.0
@@ -412,13 +414,13 @@ The application builder is written in Go and the application can be written from
 docker run -v `pwd`:/tmp/app direktiv/action-builder gen-custom v1.0.0
 ```
 
-This generates a skeleton application where three functions can be implemented. Thes files containing those function are not getting opverwritten with subsequent `gen-custom` calls.
+This generates a skeleton application where three functions can be implemented. Thes files containing those functions will never be overwritten with subsequent `gen-custom` calls.
 
 ### restapi/direktiv_post.go
 
 This file contains the function `PostDirektivHandle` which is the main function getting executed from Direktiv. The parameter is a Go object which contains the information configured in the parameter section in the swagger.yaml file. 
 
-This files conatins a second function which is getting called before the Knative pod is getting destroyed. In this function cleanup or disconnecting routines can be added. 
+This file contains a second function which is called before the Knative pod is getting destroyed. In this function cleanup or disconnecting routines can be added. 
 
 ### restapi/direktiv_delete.go
 
