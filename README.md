@@ -22,7 +22,7 @@ docker run -v `pwd`:/tmp/app direktiv/action-builder gen v1.0.0
 
 - Test the application
 
-Execute `run.sh` within the v1.0.0 folder which was generated during the `init` step. The following command starts the server on port 8080 and the docs are available under (http://127.0.0.1:8080/docs)[http://127.0.0.1:8080/docs].
+Execute `run.sh` within the v1.0.0 folder which was generated during the `init` step. The following command starts the server on port 8080 and the docs are available under [http://127.0.0.1:8080/docs](http://127.0.0.1:8080/docs).
 
 ```
 cd v1.0.0 && ./run.sh
