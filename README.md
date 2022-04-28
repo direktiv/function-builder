@@ -208,7 +208,7 @@ The default response is a list of executed commands named `cmdX`. The reponse fo
 }
 ```
 
-The output of the aciton can be modified with a template if the default response does not statisfy the requirements. The output can be configured in the `output` section. The parameter for the template is the response object, which is a map of the commands execute with the keys `cmdX` for each command.
+The output of the action can be modified with a template if the default response does not statisfy the requirements. The output can be configured in the `output` section. The parameter for the template is the response object, which is a map of the commands execute with the keys `cmdX` for each command.
 
 ```        
 output: |
