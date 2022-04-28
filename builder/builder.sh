@@ -20,7 +20,7 @@ function generate_app() {
         swagger generate server -C templates/server.yaml --target=/tmp/app/$1 -f /tmp/app/$1/swagger.yaml
     fi
 
-    cd /tmp/app/$1 && \
+    cd /tmp/app/$1 && go mod tidy && \
         go get github.com/go-openapi/runtime && \
         go get github.com/jessevdk/go-flags && \
         go get github.com/direktiv/apps/go/pkg/apps && \
@@ -37,6 +37,7 @@ function init_app() {
     fi
 
     mkdir -p /tmp/app/v1.0.0
+    
     sed "s/APPNAME/$1/g" templates/Dockerfile > /tmp/app/v1.0.0/Dockerfile
 
     sed "s/APPNAME/$1/g" templates/run.sh > /tmp/app/v1.0.0/run.sh

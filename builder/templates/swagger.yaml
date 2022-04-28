@@ -3,6 +3,10 @@ info:
   description: Description for APPNAME
   title: APPNAME
   version: 1.0.0
+  x-direktiv:
+    container: direktiv/APPNAME
+    category: unknown
+    long-description: This is a longer description for the application APPNAME
 consumes:
 - application/json
 produces:
@@ -47,6 +51,7 @@ paths:
               name:
                 type: string
                 example: YourName
+                description: The full name for the greeting
       # direktiv code generation is configured here
       x-direktiv:  
         cmds:

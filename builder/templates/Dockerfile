@@ -14,6 +14,8 @@ RUN cd src && \
 
 FROM ubuntu:21.04
 
+RUN apt-get update && apt-get install ca-certificates -y
+
 COPY --from=build /application /bin/application
 
 EXPOSE 8080

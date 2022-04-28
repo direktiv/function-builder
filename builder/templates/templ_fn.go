@@ -128,14 +128,15 @@ func runCommand{{ $i }}(ctx context.Context,
 	fmt.Printf("object going in command template: %+v\n", params.Body)
 	{{- end}}
 
-	cmd, err := templateString("{{ .exec }}", params.Body)
+	cmd, err := templateString(`{{ .exec }}`, params.Body)
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
 	}
-
-	silent := {{ if ne .silent nil }}{{.silent}}{{ else }}false{{ end }}
-	print := {{ if ne .print nil }}{{.print}}{{ else }}true{{ end }}
+	cmd = strings.Replace(cmd, "\n", "", -1)
+ 
+	silent := {{ if ne .silent nil }}templateString("{{ .silent }}", ls){{ else }}false{{ end }}
+	print := {{ if ne .print nil }}templateString("{{ .print }}", ls){{ else }}true{{ end }}
 	output := "{{ if ne .output nil }}{{.output}}{{ end }}"
 
 	envs := []string{}
@@ -174,7 +175,7 @@ func runCommand{{ $i }}(ctx context.Context,
 		fmt.Printf("object going in command template: %+v\n", ls)
 		{{- end}}
 
-		cmd, err := templateString("{{ .exec }}", ls)
+		cmd, err := templateString(`{{ .exec }}`, ls)
 		if err != nil {
 			ir := make(map[string]interface{})
 			ir[successKey] = false
@@ -205,7 +206,6 @@ func runCommand{{ $i }}(ctx context.Context,
 
 {{- else if eq $action "foreachHttp"}}
 
-// foreach http request
 type LoopStruct{{ $i }} struct {
 	PostParams 
 	Item interface{}
@@ -245,14 +245,14 @@ func runCommand{{ $i }}(ctx context.Context,
 			return cmds, err
 		}
 
-		insecure, err := templateString("{{ .insecure }}", ls)
+		insecure, err := templateString("{{ .insecure }}", params)
 		if err != nil {
 			return cmds, err
 		}
 
 		ins, err := strconv.ParseBool(insecure)
 		if err != nil {
-			return cmds, err
+			ins = false
 		}
 
 		headers := make(map[string]string)
@@ -266,8 +266,22 @@ func runCommand{{ $i }}(ctx context.Context,
 		err200 := {{ if ne .errorNo200 nil }}{{.errorNo200}}{{ else }}true{{ end }}
 		ri.Logger().Infof("%v request to %v", method, u)
 
+		var data []byte
+		{{- if .data }}
+		value, err := templateString(`{{ .data }}`, ls)
+		if err != nil {
+			return cmds, err
+		}
+		data = []byte(value)
+		{{- else if .data64 }}
+		data, err = base64.StdEncoding.DecodeString(`{{ .data64 }}`)
+		if err != nil {
+			return cmds, err
+		}
+		{{- end }}
+
 		r, _ := doHttpRequest(method, u, user, password, 
-			headers, ins, err200)
+			headers, ins, err200, data)
 
 		ri.Logger().Infof("request result code %v", r["code"])
 		
@@ -275,7 +289,7 @@ func runCommand{{ $i }}(ctx context.Context,
 
 	}
 
-	return nil, nil
+	return cmds, nil
 
 }
 
@@ -337,8 +351,24 @@ func runCommand{{ $i }}(ctx context.Context,
 	err200 := {{ if ne .errorNo200 nil }}{{.errorNo200}}{{ else }}true{{ end }}
 	ri.Logger().Infof("%v request to %v", method, u)
 
+	var data []byte
+	{{- if .data }}
+	value, err := templateString(`{{ .data }}`, params)
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+	data = []byte(value)
+	{{- else if .data64 }}
+	data, err = base64.StdEncoding.DecodeString(`{{ .data64 }}`)
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+	{{- end }}
+
 	return doHttpRequest(method, u, user, password, 
-		headers, ins, err200)
+		headers, ins, err200, data)
 
 }
 
@@ -347,91 +377,6 @@ func runCommand{{ $i }}(ctx context.Context,
 // end commands
 {{- end }}
 
-func doHttpRequest(method, u, user, pwd string, 
-	headers map[string]string, 
-	insecure, errNo200 bool) (map[string]interface{}, error) {
-
-	ir := make(map[string]interface{})
-	ir[successKey] = false
-
-	urlParsed, err := url.Parse(u)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-
-	v, err := url.ParseQuery(urlParsed.RawQuery)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-
-	urlParsed.RawQuery = v.Encode()
-
-	req, err := http.NewRequest(strings.ToUpper(method), urlParsed.String(), nil)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-
-	for k, v := range headers {
-		req.Header.Add(k, v)
-	}
-
-	if user != "" {
-		req.SetBasicAuth(user, pwd)
-	}
-
-	jar, err := cookiejar.New(&cookiejar.Options{
-		PublicSuffixList: publicsuffix.List,
-	})
-	cr := http.DefaultTransport.(*http.Transport).Clone()
-	cr.TLSClientConfig = &tls.Config{
-		InsecureSkipVerify: insecure,
-	}
-
-	client := &http.Client{
-		Jar:       jar,
-		Transport: cr,
-	}
-
-	resp, err := client.Do(req)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-	defer resp.Body.Close()
-	
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-
-	if errNo200 && (resp.StatusCode < 200 || resp.StatusCode > 299) {
-		err = fmt.Errorf("response status is not between 200-299")
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-
-	// from here on it is successful
-	ir[successKey] = true
-	ir[statusKey] = resp.Status
-	ir[codeKey]= resp.StatusCode
-	ir[headersKey] = resp.Header
-
-	var rj interface{}
-	err = json.Unmarshal(b, &rj)
-	ir[resultKey] = rj
-
-	// if the response is not json, base64 the result
-	if err != nil {
-		ir[resultKey] = base64.StdEncoding.EncodeToString(b)
-	}
-
-	return ir, nil
-	
-}
 
 func generateError(code string, err error) *PostDefault {
 
@@ -456,6 +401,18 @@ func HandleShutdown() {
 }
 
 {{- else }}
+
+import (
+	"fmt"
+	"html/template"
+
+	"github.com/go-openapi/runtime/middleware"
+	"github.com/direktiv/apps/go/pkg/apps"
+
+
+{{ imports .DefaultImports }}
+)
+
 
 {{- $direktiv := index .Extensions "x-direktiv" }}
 

@@ -2,6 +2,10 @@ package {{.Package}}
 
 import (
 	"html/template"
+	"github.com/mattn/go-shellwords"
+	"github.com/direktiv/apps/go/pkg/apps"
+	"github.com/Masterminds/sprig"
+	"golang.org/x/net/publicsuffix"
 )
 
 {{- $printDebug := false }}
@@ -113,4 +117,91 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 
 	return ir, nil
 
+}
+
+
+func doHttpRequest(method, u, user, pwd string, 
+	headers map[string]string, 
+	insecure, errNo200 bool, data []byte) (map[string]interface{}, error) {
+
+	ir := make(map[string]interface{})
+	ir[successKey] = false
+
+	urlParsed, err := url.Parse(u)
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+
+	v, err := url.ParseQuery(urlParsed.RawQuery)
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+
+	urlParsed.RawQuery = v.Encode()
+
+	req, err := http.NewRequest(strings.ToUpper(method), urlParsed.String(), bytes.NewReader(data))
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+
+	for k, v := range headers {
+		req.Header.Add(k, v)
+	}
+
+	if user != "" {
+		req.SetBasicAuth(user, pwd)
+	}
+
+	jar, err := cookiejar.New(&cookiejar.Options{
+		PublicSuffixList: publicsuffix.List,
+	})
+	cr := http.DefaultTransport.(*http.Transport).Clone()
+	cr.TLSClientConfig = &tls.Config{
+		InsecureSkipVerify: insecure,
+	}
+
+	client := &http.Client{
+		Jar:       jar,
+		Transport: cr,
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+	defer resp.Body.Close()
+	
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+
+	if errNo200 && (resp.StatusCode < 200 || resp.StatusCode > 299) {
+		err = fmt.Errorf("response status is not between 200-299: %v (%v)", resp.StatusCode, resp.Status)
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+
+	// from here on it is successful
+	ir[successKey] = true
+	ir[statusKey] = resp.Status
+	ir[codeKey]= resp.StatusCode
+	ir[headersKey] = resp.Header
+
+	var rj interface{}
+	err = json.Unmarshal(b, &rj)
+	ir[resultKey] = rj
+
+	// if the response is not json, base64 the result
+	if err != nil {
+		ir[resultKey] = base64.StdEncoding.EncodeToString(b)
+	}
+
+	return ir, nil
+	
 }

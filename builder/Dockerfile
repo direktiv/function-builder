@@ -11,8 +11,11 @@ RUN download_url=$(curl -s https://api.github.com/repos/go-swagger/go-swagger/re
 COPY builder.sh /
 RUN chmod 755 builder.sh 
 
-RUN mkdir /go
+RUN mkdir /go /.cache
 ENV GOPATH=/go
+
+RUN chmod 777 /go
+RUN chmod 777 /.cache/
 
 COPY templates /templates 
 
