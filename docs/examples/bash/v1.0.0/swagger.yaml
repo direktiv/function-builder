@@ -1,0 +1,100 @@
+swagger: "2.0"
+info:
+  description: Description for bash-service
+  title: bash-service
+  version: 1.0.0
+  x-direktiv:
+    container: direktiv/bash-service
+    category: unknown
+    long-description: This is a longer description for the application bash-service
+consumes:
+- application/json
+produces:
+- application/json
+schemes:
+- http
+paths:
+  /: 
+    delete:
+      parameters:
+        - name: Direktiv-ActionID
+          in: header
+          type: string
+          description: |
+            On cancel Direktiv sends a DELETE request to
+            the action with id in the header
+      x-direktiv:
+        cancel: echo 'cancel {{ .DirektivActionID }}'
+      responses:
+        200:
+    post:
+      parameters:
+        - name: Direktiv-ActionID
+          in: header
+          type: string
+          description: |
+            direktiv action id is an UUID. 
+            For development it can be set to 'development'
+        - name: Direktiv-TempDir
+          in: header
+          type: string
+          description: |
+            direktiv temp dir is the working directory for that request
+            For development it can be set to e.g. '/tmp'
+        - name: body
+          in: body
+          schema:
+            type: object
+            required:
+              - address
+              - search
+            properties:
+              address:
+                type: string
+              search:
+                type: string
+      # direktiv code generation is configured here
+      x-direktiv:   
+        debug: true
+        cmds:
+        - action: exec
+          exec: |-
+            bash -c 'curl -sL {{ .Address }} | grep -o -i {{ .Search }} | wc -l'
+        output: |
+          {
+            "hits": "{{ index (index . 0) "result" }}"
+          }
+      responses:
+        200:
+          description: nice greeting
+          schema:
+            type: object
+            additionalProperties: {}
+            example: 
+              greeting: Hello YourName
+        default:
+          description: generic error response
+          headers:
+            Direktiv-ErrorCode:
+              type: string
+            Direktiv-ErrorMessage:
+              type: string
+          schema:
+            $ref: "#/definitions/error"
+definitions:
+  direktivFile:
+    type: object
+    x-go-type:
+      type: DirektivFile
+      import:
+        package: github.com/direktiv/apps/go/pkg/apps 
+  error:
+    type: object
+    required:
+      - errorCode
+      - errorMessage
+    properties:
+      errorCode:
+        type: string
+      errorMessage:
+        type: string

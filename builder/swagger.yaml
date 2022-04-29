@@ -1,5 +1,141 @@
 swagger: "2.0"
 info:
+  description: Description for hellworld
+  title: hellworld
+  version: 1.0.0
+  x-direktiv:
+    container: direktiv/hellworld
+    category: unknown
+    long-description: This is a longer description for the application hellworld
+consumes:
+- application/json
+produces:
+- application/json
+schemes:
+- http
+paths:
+  /: 
+    delete:
+      parameters:
+        - name: Direktiv-ActionID
+          in: header
+          type: string
+          description: |
+            On cancel Direktiv sends a DELETE request to
+            the action with id in the header
+      x-direktiv:
+        cancel: echo 'cancel {{ .DirektivActionID }}'
+      responses:
+        200:
+    post:
+      parameters:
+        - name: Direktiv-ActionID
+          in: header
+          type: string
+          description: |
+            direktiv action id is an UUID. 
+            For development it can be set to 'development'
+        - name: Direktiv-TempDir
+          in: header
+          type: string
+          description: |
+            direktiv temp dir is the working directory for that request
+            For development it can be set to e.g. '/tmp'
+        - name: body
+          in: body
+          schema:
+            type: object
+            required:
+              - name
+            properties:
+              names: 
+                type: array
+                items: 
+                  type: string
+              name:
+                type: string
+                example: YourName
+      # direktiv code generation is configured here
+      x-direktiv:  
+        debug: true
+        cmds:
+        - action: exec
+          exec: echo 'Hello {{ .Name }}'
+          silent: true
+        - action: foreach
+          loop: .Names
+          exec: echo 'Hello2 {{ .Item }} and {{ index (index .Commands 0) "result" }}'
+          env: ['VALUE1={{ index (index .Commands 0) "result" }}']
+
+        # env: ["HELLO=world", "VALUE={{ .Hello }}"]
+        # - action: http
+        #   url: http://www.direktiv.io/{{ index (index .Commands 0) "result" }}
+        #   method: get
+        # - action: foreachHttp
+        #   loop: .Names
+        #   url: http://www.direktiv.io/{{ .Commands }}
+        #   method: get
+
+
+        # - action: foreachHttp
+        #   loop: .Names
+        #   url: http://www.direktiv.io/{{ .Item }}
+        #   method: get
+            # headers: 
+            #   - jens: sss
+            #   - sdd: sddd
+            # username: hello
+            # password: world
+            # insecure: true 
+            # errorNo200: true
+            # continue: true
+        # output: |
+        #   {
+        #     "greeting": "JENS"
+        #   }
+      responses:
+        200:
+          description: nice greeting
+          schema:
+            type: object
+            additionalProperties: {}
+            # required:
+            #   - greeting
+            # properties:
+            #   greeting:
+            #     type: string
+            #   helloworld:
+            #     type: string
+        default:
+          description: generic error response
+          headers:
+            Direktiv-ErrorCode:
+              type: string
+            Direktiv-ErrorMessage:
+              type: string
+          schema:
+            $ref: "#/definitions/error"
+definitions:
+  direktivFile:
+    type: object
+    x-go-type:
+      type: DirektivFile
+      import:
+        package: github.com/direktiv/apps/go/pkg/apps 
+  error:
+    type: object
+    required:
+      - errorCode
+      - errorMessage
+    properties:
+      errorCode:
+        type: string
+      errorMessage:
+        type: string
+
+
+swagger: "2.0"
+info:
   description: Description for APPNAME
   title: APPNAME
   version: 1.0.0

@@ -39,7 +39,7 @@ The container maps a local directory to the container and uses it as the base. I
 
 A multi-stage build is used in the default Dockerfile. The generated application is built in the first stage. The second stage may be customized to meet the requirements of the service, for example through adding additional files to the base image or change the base image via the `FROM` directive. The last three lines should not be altered.
 
-```docker
+```Dockerfile
 FROM golang:1.18-buster as build
 
 COPY go.mod src/go.mod

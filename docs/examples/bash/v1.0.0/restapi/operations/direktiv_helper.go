@@ -1,62 +1,60 @@
-package {{.Package}}
+package operations
 
 import (
+	"bytes"
+	"context"
+	"crypto/tls"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"html"
 	"html/template"
-	"github.com/mattn/go-shellwords"
-	"github.com/direktiv/apps/go/pkg/apps"
+	"io"
+	"net/http"
+	"net/http/cookiejar"
+	"net/url"
+	"os"
+	"os/exec"
+	"strconv"
+	"strings"
+
 	"github.com/Masterminds/sprig"
+	"github.com/direktiv/apps/go/pkg/apps"
+	"github.com/mattn/go-shellwords"
 	"golang.org/x/net/publicsuffix"
 )
-
-{{- $printDebug := false }}
-{{- $direktiv := index .Extensions "x-direktiv" }}
-{{- $debug := (index $direktiv "debug") }}
-
-{{- if ne $debug nil }}
-	{{- $printDebug = $debug }}
-{{- end }}
 
 func fileExists(file string) bool {
 	return true
 }
 
 func templateString(tmplIn string, data interface{}) (string, error) {
-
-	{{- if $printDebug }}
 	fmt.Printf("template to use: %+v\n", tmplIn)
 	fmt.Printf("data to use: %+v\n", data)
-	{{- end}}
 
 	tmpl, err := template.New("base").Funcs(sprig.FuncMap()).Funcs(template.FuncMap{
 		"fileExists": fileExists,
 	}).Parse(tmplIn)
 	if err != nil {
-		{{- if $printDebug }}
 		fmt.Printf("template failed: %+v\n", err)
-		{{- end}}
 		return "", err
 	}
 
 	var b bytes.Buffer
 	err = tmpl.Execute(&b, data)
 	if err != nil {
-		{{- if $printDebug }}
 		fmt.Printf("template failed: %+v\n", err)
-		{{- end}}
 		return "", err
 	}
-
-	{{- if $printDebug }}
 	fmt.Printf("template output: %+v\n", html.UnescapeString(b.String()))
-	{{- end}}
 
 	v := b.String()
-	if (v == "<no value>") {
+	if v == "<no value>" {
 		v = ""
 	}
 
 	return html.UnescapeString(v), nil
-	
+
 }
 
 func convertTemplateToBool(template string, data interface{}, defaultValue bool) bool {
@@ -77,10 +75,7 @@ func convertTemplateToBool(template string, data interface{}, defaultValue bool)
 
 func runCmd(ctx context.Context, cmdString string, envs []string,
 	output string, silent, print bool, ri *apps.RequestInfo) (map[string]interface{}, error) {
-
-	{{- if $printDebug }}
 	fmt.Printf("evironment vars: %+v\n", envs)
-	{{- end}}
 
 	ir := make(map[string]interface{})
 	ir[successKey] = false
@@ -105,7 +100,7 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 
 	var o bytes.Buffer
 	mw := io.MultiWriter(os.Stdout, &o, logger)
-	
+
 	cmd := exec.CommandContext(ctx, bin, argsIn...)
 	cmd.Stdout = mw
 	cmd.Stderr = mw
@@ -117,7 +112,6 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 	}
 
 	err = cmd.Run()
-
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
@@ -140,16 +134,15 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 	err = json.Unmarshal(b, &rj)
 	if err != nil {
 		rj = apps.ToJSON(o.String())
-	} 
-    ir[resultKey] = rj
+	}
+	ir[resultKey] = rj
 
 	return ir, nil
 
 }
 
-
-func doHttpRequest(method, u, user, pwd string, 
-	headers map[string]string, 
+func doHttpRequest(method, u, user, pwd string,
+	headers map[string]string,
 	insecure, errNo200 bool, data []byte) (map[string]interface{}, error) {
 
 	ir := make(map[string]interface{})
@@ -202,7 +195,7 @@ func doHttpRequest(method, u, user, pwd string,
 		return ir, err
 	}
 	defer resp.Body.Close()
-	
+
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		ir[resultKey] = err.Error()
@@ -218,7 +211,7 @@ func doHttpRequest(method, u, user, pwd string,
 	// from here on it is successful
 	ir[successKey] = true
 	ir[statusKey] = resp.Status
-	ir[codeKey]= resp.StatusCode
+	ir[codeKey] = resp.StatusCode
 	ir[headersKey] = resp.Header
 
 	var rj interface{}
@@ -231,5 +224,5 @@ func doHttpRequest(method, u, user, pwd string,
 	}
 
 	return ir, nil
-	
+
 }
