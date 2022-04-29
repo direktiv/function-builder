@@ -59,7 +59,7 @@ paths:
           exec: echo 'Hello {{ .Name }}'
         output: |
           {
-            "greeting": "{{ index (index . "cmd0") "result" }}"
+            "greeting": "{{ index (index . 0) "result" }}"
           }
       responses:
         200:
