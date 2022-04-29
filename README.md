@@ -1,17 +1,17 @@
  # Direktiv Service Builder
 
- The [Direktiv](https://github.com/direktiv/direktiv) service builder is a code generator based on [Swagger](https://swagger.io/) to turn a command-line application or even a script into a webservice. These webservices can be used as functions within a [Direktiv](https://github.com/direktiv/direktiv) flow.
+The [Direktiv](https://github.com/direktiv/direktiv) service builder is a Swagger-based code generator that converts a command-line program or script into a webservice. These services may be called from within the [Direktiv](https://github.com/direktiv/direktiv) as functions. Please read the [documentation](docs/README.md) to learn how to use it. 
 
 <p style="margin-left: auto; margin-right: auto; width: 30%; height: 30%">
 <img src="docs/assets/overview.png">
 </p>
 
-The configuration is based on a `swagger.yaml`. This file is following the specification and has extensions which enables the builder to convert a script or command-line application into a service. The configuration is as simple as possible and the builder is able to compile the information in a runnable webservice. 
+The configuration is based on a `swagger.yaml` file. This file follows the swagger specification with specific extensions for [Direktiv](https://github.com/direktiv/direktiv), allowing the builder to convert a script or command-line application into a service. Furthermore, [go templating](https://pkg.go.dev/text/template) may be used by the service developer to map input parameters to arguments for their applications.
 
 # Documentation
 
-- [Getting Started](https://docs.direktiv.io/latest/getting_started/helloworld/)
-- [Examples](https://docs.direktiv.io/latest/examples/greeting/)
+- [Getting Started](https://github.com/direktiv/apps/blob/main/docs/README.md)
+- [Examples](https://github.com/direktiv/apps/blob/main/docs/examples/README.md)
 
 # Talk to us!
 

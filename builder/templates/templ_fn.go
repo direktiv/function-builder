@@ -40,15 +40,29 @@ const (
 	riErr = "io.direktiv.ri.error"
 )
 
+type accParams struct {
+	PostParams
+	Commands []interface{}
+}
+
+type accParamsTemplate struct {
+	PostBody
+	Commands []interface{}
+}
+
 func PostDirektivHandle(params PostParams) middleware.Responder {
 
-	{{- if and .SuccessResponse.Schema }}
+	{{- if .SuccessResponse.Schema }}
+	{{- if eq .SuccessResponse.Schema.GoType "interface{}"}}
 	var resp {{ .SuccessResponse.Schema.GoType }}
+	{{- else }}
+	resp := &{{ .SuccessResponse.Schema.GoType }}{}
+	{{- end}}
 	{{- end }}
 
 	var (
 		err error
-		ret map[string]interface{}
+		ret interface{}
 	)
 
 	ri, err := apps.RequestinfoFromRequest(params.HTTPRequest)
@@ -62,17 +76,26 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 
 	{{/* command section */}}
 	{{- $length := len $commands }}
-	responses := make(map[string]map[string]interface{}, {{ $length }})
+	var responses []interface{}
+
+	var paramsCollector []interface{}
+	accParams := accParams{
+		params,
+		nil,
+	}
 
 	{{- range $i,$e := $commands }}
 
-	ret, err = runCommand{{ $i }}(ctx, params, ri)
-	responses["cmd{{ $i }}"] = ret
+	ret, err = runCommand{{ $i }}(ctx, accParams, ri)
+	responses = append(responses, ret)
 
 	if err != nil && {{ if ne .continue nil }}!{{ .continue }}{{ else }}true{{ end }} {
 		errName := {{- if ne .error nil }}"{{ .error }}"{{- else }}cmdErr{{- end }}
 		return generateError(errName, err)
 	}
+
+	paramsCollector = append(paramsCollector, ret)
+	accParams.Commands = paramsCollector
 
 	{{- end }}
 
@@ -97,18 +120,29 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	responseBytes, err := json.Marshal(responses)
 	{{- end  }}
 
+	{{- if .SuccessResponse.Schema }}
+	{{- if eq .SuccessResponse.Schema.GoType "interface{}"}}
 	err = json.Unmarshal(responseBytes, &resp)
 	if err != nil {
 		return generateError(outErr, err)
 	}
+	{{- else }}
+	// validate
+	resp.UnmarshalBinary(responseBytes)
+	err = resp.Validate(strfmt.Default)
+	if err != nil {
+		return generateError(outErr, err)
+	}
+	{{- end}}
+	{{- end }}
 
-	return NewPostOK().WithPayload(&resp)
+	return NewPostOK().WithPayload(resp)
 	{{- else }}
 	return NewPostOK()
 	{{- end  }}
 }
 
-// start commands
+{{/* start commands */}}
 {{- range $i,$e := $commands }}
 
 {{ $action := index $e "action" }}
@@ -117,31 +151,36 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 
 // exec
 func runCommand{{ $i }}(ctx context.Context, 
-		params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
+		params accParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
 
 	ir := make(map[string]interface{})
 	ir[successKey] = false
 
 	ri.Logger().Infof("executing command")
 
+	at := accParamsTemplate{
+		params.Body,
+		params.Commands,
+	}
+
 	{{- if $printDebug }}
-	fmt.Printf("object going in command template: %+v\n", params.Body)
+	fmt.Printf("object going in command template: %+v\n", at)
 	{{- end}}
 
-	cmd, err := templateString(`{{ .exec }}`, params.Body)
+	cmd, err := templateString(`{{ .exec }}`, at)
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
 	}
 	cmd = strings.Replace(cmd, "\n", "", -1)
- 
-	silent := {{ if ne .silent nil }}templateString("{{ .silent }}", ls){{ else }}false{{ end }}
-	print := {{ if ne .print nil }}templateString("{{ .print }}", ls){{ else }}true{{ end }}
+	
+	silent := convertTemplateToBool("{{ .silent }}", at, false)
+	print := convertTemplateToBool("{{ .print }}", at, true)
 	output := "{{ if ne .output nil }}{{.output}}{{ end }}"
 
 	envs := []string{}
 	{{- range $i,$e := .env }}
-		env{{ $i }}, _ := templateString("{{ $e }}", ls) 
+		env{{ $i }}, _ := templateString(`{{ $e }}`, at) 
 		envs = append(envs, env{{ $i }})
 	{{- end }} 
 
@@ -153,16 +192,16 @@ func runCommand{{ $i }}(ctx context.Context,
 
 // foreach command
 type LoopStruct{{ $i }} struct {
-	PostParams 
+	accParams 
 	Item interface{}
 }
 
 func runCommand{{ $i }}(ctx context.Context, 
-		params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
+		params accParams, ri *apps.RequestInfo) ([]map[string]interface{}, error) {
 
 	ri.Logger().Infof("foreach command over {{ .loop }}")
 
-	cmds := make(map[string]interface{}, len(params.Body{{ .loop }}))
+	var cmds []map[string]interface{}
 
 	for a := range params.Body{{ .loop }} {
 
@@ -180,7 +219,7 @@ func runCommand{{ $i }}(ctx context.Context,
 			ir := make(map[string]interface{})
 			ir[successKey] = false
 			ir[resultKey] = err.Error()
-			cmds[fmt.Sprintf("Foreach%d", a)] = ir
+			cmds = append(cmds, ir)
 			continue
 		}
 
@@ -190,12 +229,12 @@ func runCommand{{ $i }}(ctx context.Context,
 
 		envs := []string{}
 		{{- range $i,$e := .env }}
-			env{{ $i }}, _ := templateString("{{ $e }}", ls) 
+			env{{ $i }}, _ := templateString(`{{ $e }}`, ls) 
 			envs = append(envs, env{{ $i }})
 		{{- end }} 
 
 		r, _ := runCmd(ctx, cmd, envs, output, silent, print, ri)
-		cmds[fmt.Sprintf("foreach%d", a)] = r
+		cmds = append(cmds, r)
 
 	}
 
@@ -207,16 +246,16 @@ func runCommand{{ $i }}(ctx context.Context,
 {{- else if eq $action "foreachHttp"}}
 
 type LoopStruct{{ $i }} struct {
-	PostParams 
+	accParams 
 	Item interface{}
 }
 
 func runCommand{{ $i }}(ctx context.Context, 
-		params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
+		params accParams, ri *apps.RequestInfo) ([]map[string]interface{}, error) {
 
 	ri.Logger().Infof("foreach http request over {{ .loop }}")
 
-	cmds := make(map[string]interface{}, len(params.Body{{ .loop }}))
+	var cmds []map[string]interface{}
 
 	for a := range params.Body{{ .loop }} {
 
@@ -225,40 +264,32 @@ func runCommand{{ $i }}(ctx context.Context,
 			params.Body{{ .loop }}[a],
 		}
 
-		u, err := templateString("{{ .url }}", ls)
+		u, err := templateString(`{{ .url }}`, ls)
 		if err != nil {
 			return cmds, err
 		}
 
-		method, err := templateString("{{ .method }}", ls)
+		method, err := templateString(`{{ .method }}`, ls)
 		if err != nil {
 			return cmds, err
 		}
 
-		user, err := templateString("{{ .username }}", ls)
+		user, err := templateString(`{{ .username }}`, ls)
 		if err != nil {
 			return cmds, err
 		}
 
-		password, err := templateString("{{ .password }}", ls)
+		password, err := templateString(`{{ .password }}`, ls)
 		if err != nil {
 			return cmds, err
 		}
 
-		insecure, err := templateString("{{ .insecure }}", params)
-		if err != nil {
-			return cmds, err
-		}
-
-		ins, err := strconv.ParseBool(insecure)
-		if err != nil {
-			ins = false
-		}
+		ins := convertTemplateToBool(`{{ .insecure }}`, ls, false) 
 
 		headers := make(map[string]string)
 		{{- range $i,$h := .headers }}
 		{{- range $k,$v := $h }}
-		{{ $k }}Header, err := templateString("{{ $v }}", params)
+		{{ $k }}Header, err := templateString(`{{ $v }}`, params)
 		headers["{{ $k }}"] = {{ $k }}Header
 		{{- end }}
 		{{- end }}
@@ -284,8 +315,7 @@ func runCommand{{ $i }}(ctx context.Context,
 			headers, ins, err200, data)
 
 		ri.Logger().Infof("request result code %v", r["code"])
-		
-		cmds[fmt.Sprintf("foreachHttp%d", a)] = r
+		cmds = append(cmds, r)
 
 	}
 
@@ -298,52 +328,49 @@ func runCommand{{ $i }}(ctx context.Context,
 
 // http request
 func runCommand{{ $i }}(ctx context.Context,
-	params PostParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
+	params accParams, ri *apps.RequestInfo) (map[string]interface{}, error) {
 
 	ri.Logger().Infof("running http request")
+
+	at := accParamsTemplate{
+		params.Body,
+		params.Commands,
+	}
+
 
 	ir := make(map[string]interface{})
 	ir[successKey] = false
 
-	u, err := templateString("{{ .url }}", params)
+	u, err := templateString(`{{ .url }}`, at)
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
 	}
 
-	method, err := templateString("{{ .method }}", params)
+	method, err := templateString(`{{ .method }}`, at)
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
 	}
 
-	user, err := templateString("{{ .username }}", params)
+	user, err := templateString(`{{ .username }}`, at)
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
 	}
 
-	password, err := templateString("{{ .password }}", params)
+	password, err := templateString(`{{ .password }}`, at)
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
 	}
 
-	insecure, err := templateString("{{ .insecure }}", params)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-
-	ins, err := strconv.ParseBool(insecure)
-	if err != nil {
-		ins = false
-	}
+	ins := convertTemplateToBool(`{{ .insecure }}`, at, false) 
 
 	headers := make(map[string]string)
 	{{- range $i,$h := .headers }}
 	{{- range $k,$v := $h }}
-	{{ $k }}Header, err := templateString("{{ $v }}", params)
+	{{ $k }}Header, err := templateString(`{{ $v }}`, params)
 	headers["{{ $k }}"] = {{ $k }}Header
 	{{- end }}
 	{{- end }}

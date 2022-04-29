@@ -24,6 +24,7 @@ func templateString(tmplIn string, data interface{}) (string, error) {
 
 	{{- if $printDebug }}
 	fmt.Printf("template to use: %+v\n", tmplIn)
+	fmt.Printf("data to use: %+v\n", data)
 	{{- end}}
 
 	tmpl, err := template.New("base").Funcs(sprig.FuncMap()).Funcs(template.FuncMap{
@@ -58,8 +59,28 @@ func templateString(tmplIn string, data interface{}) (string, error) {
 	
 }
 
+func convertTemplateToBool(template string, data interface{}, defaultValue bool) bool {
+
+	out, err := templateString(template, data)
+	if err != nil {
+		return defaultValue
+	}
+
+	ins, err := strconv.ParseBool(out)
+	if err != nil {
+		return defaultValue
+	}
+
+	return ins
+
+}
+
 func runCmd(ctx context.Context, cmdString string, envs []string,
 	output string, silent, print bool, ri *apps.RequestInfo) (map[string]interface{}, error) {
+
+	{{- if $printDebug }}
+	fmt.Printf("evironment vars: %+v\n", envs)
+	{{- end}}
 
 	ir := make(map[string]interface{})
 	ir[successKey] = false
