@@ -2,7 +2,7 @@
 
 The [Direktiv](https://github.com/direktiv/direktiv) service builder is a Swagger-based code generator that converts a command-line program or script into a webservice. These services may be called from within the [Direktiv](https://github.com/direktiv/direktiv) as functions. Please read the [documentation](docs/README.md) to learn how to use it. 
 
-<p style="margin-left: auto; margin-right: auto; width: 30%; height: 30%">
+<p style="margin-left: auto; margin-right: auto; width: 15%; height: 15%">
 <img src="docs/assets/overview.png">
 </p>
 
