@@ -1,6 +1,6 @@
  # Direktiv Service Builder
 
-Creating a new service takes three steps: configuring the input, the command, and output. This documentation will go through these three stages in detail, as well as all configuration choices. As a good technical individual, you may believe it's easier to just skip the documentation and go straight to the examples(examples/README.md) as soon as possible. :wink:
+Creating a new service takes three steps: configuring the input, the command, and output. This documentation will go through these three stages in detail, as well as all configuration choices. As a good technical individual, you may believe it's easier to just skip the documentation and go straight to the [examples](examples/README.md) as soon as possible. :wink:
 
 - [Initializing the Service](#initializing-the-service)
 - [Configuring the Input](#configuring-the-input)
@@ -82,20 +82,7 @@ Manages the go dependencies. Should not be altered.
 
 ```yaml
 swagger: "2.0"
-info:
-  description: Description for myservice
-  title: myservice
-  version: 1.0.0
-  x-direktiv:
-    container: direktiv/myservice
-    category: unknown
-    long-description: This is a longer description for the application myservice
-consumes:
-- application/json
-produces:
-- application/json
-schemes:
-- http
+...
 paths:
   /: 
     delete:
@@ -161,23 +148,7 @@ paths:
               type: string
           schema:
             $ref: "#/definitions/error"
-definitions:
-  direktivFile:
-    type: object
-    x-go-type:
-      type: DirektivFile
-      import:
-        package: github.com/direktiv/apps/go/pkg/apps 
-  error:
-    type: object
-    required:
-      - errorCode
-      - errorMessage
-    properties:
-      errorCode:
-        type: string
-      errorMessage:
-        type: string
+...
 ```
 
 <!-- - using output from former command
