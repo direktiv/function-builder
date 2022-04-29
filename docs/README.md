@@ -70,6 +70,10 @@ CMD ["/bin/application", "--port=8080", "--host=0.0.0.0"]
 
 This file is the configuration file for the service and the configuration options will be explained in this documentation.
 
+<p>
+<img src="assets/swagger.png">
+</p>
+
 **3. run.sh**
 
 This helper script builds the service and container and starts it. This script can be used for faster development and testing. Can be used after the service has been compiled the first time. 
@@ -80,81 +84,21 @@ Manages the go dependencies. Should not be altered.
 
 ## Configuring the Input
 
+Configuring the input 
+
+*Input Definition*
 ```yaml
-swagger: "2.0"
-...
-paths:
-  /: 
-    delete:
-      parameters:
-        - name: Direktiv-ActionID
-          in: header
-          type: string
-          description: |
-            On cancel Direktiv sends a DELETE request to
-            the action with id in the header
-      x-direktiv:
-        cancel: echo 'cancel {{ .DirektivActionID }}'
-      responses:
-        200:
-    post:
-      parameters:
-        - name: Direktiv-ActionID
-          in: header
-          type: string
-          description: |
-            direktiv action id is an UUID. 
-            For development it can be set to 'development'
-        - name: Direktiv-TempDir
-          in: header
-          type: string
-          description: |
-            direktiv temp dir is the working directory for that request
-            For development it can be set to e.g. '/tmp'
-        - name: body
-          in: body
-          schema:
-            type: object
-            required:
-              - name
-            properties:
-              name:
-                type: string
-                example: YourName
-                description: The full name for the greeting
-      # direktiv code generation is configured here
-      x-direktiv:  
-        cmds:
-        - action: exec
-          exec: echo 'Hello {{ .Name }}'
-        output: |
-          {
-            "greeting": "{{ index (index . 0) "result" }}"
-          }
-      responses:
-        200:
-          description: nice greeting
-          schema:
-            type: object
-            additionalProperties: {}
-            example: 
-              greeting: Hello YourName
-        default:
-          description: generic error response
-          headers:
-            Direktiv-ErrorCode:
-              type: string
-            Direktiv-ErrorMessage:
-              type: string
-          schema:
-            $ref: "#/definitions/error"
-...
-```
-
-<!-- - using output from former command
-- if statements in print
-- print docs -->
 
 ```
-docker run -v `pwd`:/tmp/app direktiv/action-builder gen v1.0.0
+
+*Direktiv Usage*
+```yaml
+
 ```
+
+Service Payload
+```json
+
+```
+
+
