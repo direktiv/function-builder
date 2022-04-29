@@ -70,10 +70,6 @@ CMD ["/bin/application", "--port=8080", "--host=0.0.0.0"]
 
 This file is the configuration file for the service and the configuration options will be explained in this documentation.
 
-<p>
-<img src="assets/swagger.png">
-</p>
-
 **3. run.sh**
 
 This helper script builds the service and container and starts it. This script can be used for faster development and testing. Can be used after the service has been compiled the first time. 
@@ -84,21 +80,100 @@ Manages the go dependencies. Should not be altered.
 
 ## Configuring the Input
 
-Configuring the input 
+The input values required for a new service must be planned. Although the service builder may be set to accept all JSON data, using an input configuration prevents the service from malfunctioning and delivering incorrect results.
 
-*Input Definition*
+In the `swagger.yaml` file generated at the beginning, the default input configuration begins at `paths:`. This part of the document follows the [swagger specification](https://swagger.io/docs/specification/describing-parameters/) exactly, and it contains no Direktiv-specific extensions. Nevertheless Direktiv only uses the base path `/` with POST for services so only the body section is important here and changes should be made here only. For example the default `swagger.yaml` has on mandatory `name` parameter of type `string` configured in the body.
+
 ```yaml
-
+...
+- name: body
+  in: body
+  schema:
+    type: object
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        example: YourName
+        description: The full name for the greeting
+...
 ```
 
-*Direktiv Usage*
-```yaml
+If the service requires e.g. a list of integers it could be changed to the following which make the a list of integers optional.
 
+```yaml
+...
+- name: body
+  in: body
+  schema:
+    type: object
+    additionalProperties: false
+    required:
+      - name
+    properties:
+      name:
+        type: string
+        example: YourName
+        description: The full name for the greeting
+      values: 
+        type: array
+        items: 
+        type: integer
+...
 ```
 
-Service Payload
+With this configuration additional properties sent to the service from Direktiv will be ignored and can not be used in templating later in the command section. This behaviour can be changed with the attribute `additionalProperties`. If set to `true` the data will be available. Alternatively the input can be unspecified without any checks. This would accept every JSON payload from Direktiv.
+
+```yaml
+- name: body
+  in: body
+  schema:
+    type: object
+    additionalProperties: {}
+```
+
+To make a logical link between this input configuration and the Direktiv service, the following three examples provide an input definition for a service and how it converts to a Direktiv workflow. The last example demonstrates how this looks as a request made by Direktiv to the service.
+
+*1. Input Definition*
+```yaml
+- name: body
+  in: body
+  schema:
+    type: object
+    properties:
+      names: 
+        type: array
+        items: 
+          type: string
+      values:
+        type: integer
+```
+
+*2. Direktiv Action State*
+```yaml
+- id: run
+  type: action
+  action:
+    function: myservice
+    input:
+      name: Diana
+      values:
+      - 100
+      - 200
+      - 300
+```
+
+*3. Service Payload*
 ```json
-
+{
+    "name": "jens",
+	"values": [
+		1,
+		2,
+		3
+	]
+}
 ```
 
-
+## Configuring the Commands
