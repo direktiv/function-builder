@@ -13,13 +13,13 @@ Creating a new service takes three steps: configuring the input, the command, an
 - [Compiling the Service](#compiling-the-service)
 - [Advanced Features](#advanced-features) 
     - Delete method
-    - pass through parameters
     - using output from former command
+    - Direktiv file
 - [Custom Go Code](#custom-go-code)
 
 ## Initializing the Service
 
-The first step starting with a new service is initializing the project. Direktiv's service builder comes with a docker container so no local installation is required. To initializ a project simply call the following command:
+The first step starting with a new service is initializing the project. Direktiv's service builder comes with a docker container so no local installation is required. To initialise a project simply call the following command:
 
 ```
 docker run -v `pwd`:/tmp/app direktiv/service-builder init myservice
@@ -319,8 +319,92 @@ This defines the environment variables for the command. Templating can be used f
 
 ## Adding Foreach
 
+In cases where the same command needs to be executed over a list of items the `foreach` execution type can be used. The configuration is almost identical to the `exec` execution. There is an additional attribute `loop` to define the array to use for iteration. This array needs to be defined in the [input](#configuring-the-input) section.
+
+```yaml
+x-direktiv:  
+  cmds:
+  - action: foreach
+    loop: .Names
+    exec: echo Hello {{ .Item }}
+```
+
+The result is an array of results and will look similar to the following JSON snippet.
 
 
-<!-- run.sh -->
+```json
+[
+	[
+		{
+			"result": "Hello Mike",
+			"success": true
+		},
+		{
+			"result": "Hello Steven",
+			"success": true
+		},
+		{
+			"result": "Hello Sarah",
+			"success": true
+		}
+	]
+]
+```
 
+## Adding HTTP Requests
 
+Although a HTTP request could be achieved with a `curl` command it is provided as a convenient command. It simply executes a HTTP request and returns the reponse including the headers. The configuration is simple and the following example shows all the configuration options.
+
+```yaml
+- action: http
+  url: http://www.direktiv.io/{{ .Path }}
+  method: get
+  headers: 
+    - Content-Type: application/json
+  username: hello
+  password: world
+  insecure: true 
+  errorNo200: true
+  continue: true
+  data: |
+    {
+      "myname": "{{ .Name }}"
+    }
+```
+
+The folowing attributes can be used:
+
+### url / method
+
+The URL and method to use for this request. This defines the actual request.
+
+### username / password
+
+If both values are set they are used for Basic Authentication. 
+
+### insecure
+
+If the backend uses self-signed certificates this setting ignores any SSL errors. Not recommended for production use. 
+
+### errorNo200
+
+If there is a reponse from the taregt URL by default it counts as success. For example a 404 is a successful request because technically the request got a response. If this attribute is set to true every status code above 299 is considered as error.
+
+### continue
+
+Continue has the same behaviour as in the `exec` context. If the request fails the next command will stil be executed if this is set to `true`.
+
+### data
+
+The data section provides the body if the request is a POST request. The `data` atttribute is for plain text content like JSON or XML. Templating can be used to dynamically change the content based on theinput of the service. 
+
+### data64
+
+For binary data this attribute is available. If set the data will be decoded and sent as body of the request. The base64 can be data coming from the input or a special template function `file64` reads a file from the filesystem and attaches it. 
+
+```yaml
+- action: http
+  url: http://www.direktiv.io/{{ .Path }}
+  method: get
+  data64: {{ file64 myfile.tar.gz }}
+```

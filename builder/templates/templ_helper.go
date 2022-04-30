@@ -24,6 +24,17 @@ func fileExists(file string) bool {
 	return true
 }
 
+func file64(path string) string {
+
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return err.Error()
+	}
+
+	return  base64.StdEncoding.EncodeToString(b)
+
+}
+
 func deref(dd interface{}) interface{} {
 	switch p := dd.(type) {
 	case *string:
@@ -45,6 +56,7 @@ func templateString(tmplIn string, data interface{}) (string, error) {
 	tmpl, err := template.New("base").Funcs(sprig.FuncMap()).Funcs(template.FuncMap{
 		"fileExists": fileExists,
 		"deref": deref,
+		"file64": file64,
 	}).Parse(tmplIn)
 	if err != nil {
 		{{- if $printDebug }}

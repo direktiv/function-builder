@@ -4,8 +4,19 @@ package {{.Package}}
 
 {{- if eq .Name "Post" }}
 
+{{- $direktiv := index .Extensions "x-direktiv" }}
+{{- $commands := (index $direktiv "cmds") }}
+{{- $debug := (index $direktiv "debug") }}
+
+{{- if ne $debug nil }}
+	{{- $printDebug = $debug }}
+{{- end }}
+
+
 import (
+	{{- if $printDebug }}
 	"fmt"
+	{{- end }}
 	"html/template"
 
 	"github.com/Masterminds/sprig"
@@ -25,14 +36,6 @@ const (
 )
 
 var sm sync.Map
-
-{{- $direktiv := index .Extensions "x-direktiv" }}
-{{- $commands := (index $direktiv "cmds") }}
-{{- $debug := (index $direktiv "debug") }}
-
-{{- if ne $debug nil }}
-	{{- $printDebug = $debug }}
-{{- end }}
 
 const (
 	cmdErr = "io.direktiv.command.error"
@@ -59,6 +62,10 @@ type accParamsTemplate struct {
 }
 
 func PostDirektivHandle(params PostParams) middleware.Responder {
+
+	{{- if $printDebug }}
+	fmt.Printf("params in: %+v", params)
+	{{- end }}
 
 	{{- if .SuccessResponse.Schema }}
 	{{- if eq .SuccessResponse.Schema.GoType "interface{}"}}
@@ -297,8 +304,8 @@ func runCommand{{ $i }}(ctx context.Context,
 		headers := make(map[string]string)
 		{{- range $i,$h := .headers }}
 		{{- range $k,$v := $h }}
-		{{ $k }}Header, err := templateString(`{{ $v }}`, params)
-		headers["{{ $k }}"] = {{ $k }}Header
+		Header{{ $i }}, err := templateString(`{{ $v }}`, params)
+		headers["{{ $k }}"] = Header{{ $i }}
 		{{- end }}
 		{{- end }}
 	
@@ -313,7 +320,13 @@ func runCommand{{ $i }}(ctx context.Context,
 		}
 		data = []byte(value)
 		{{- else if .data64 }}
-		data, err = base64.StdEncoding.DecodeString(`{{ .data64 }}`)
+
+		fmt.Println("BASE64 {{ .data64 }}")
+		value, err := templateString(`{{ .data64 }}`, ls)
+		if err != nil {
+			return cmds, err
+		}
+		data, err = base64.StdEncoding.DecodeString(value)
 		if err != nil {
 			return cmds, err
 		}
@@ -378,8 +391,8 @@ func runCommand{{ $i }}(ctx context.Context,
 	headers := make(map[string]string)
 	{{- range $i,$h := .headers }}
 	{{- range $k,$v := $h }}
-	{{ $k }}Header, err := templateString(`{{ $v }}`, params)
-	headers["{{ $k }}"] = {{ $k }}Header
+	Header{{ $i }}, err := templateString(`{{ $v }}`, params)
+	headers["{{ $k }}"] = Header{{ $i }}
 	{{- end }}
 	{{- end }}
 
@@ -395,7 +408,12 @@ func runCommand{{ $i }}(ctx context.Context,
 	}
 	data = []byte(value)
 	{{- else if .data64 }}
-	data, err = base64.StdEncoding.DecodeString(`{{ .data64 }}`)
+	value, err := templateString(`{{ .data64 }}`, params)
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+	data, err = base64.StdEncoding.DecodeString(value)
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
