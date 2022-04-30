@@ -145,6 +145,9 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 	// output check
 	b := o.Bytes()
 	if output != "" {
+		{{- if $printDebug }}
+		fmt.Printf("output set to: %s\n", output)
+		{{- end }}
 		b, err = os.ReadFile(output)
 		if err != nil {
 			ir[resultKey] = err.Error()

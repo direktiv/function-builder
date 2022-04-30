@@ -10,8 +10,8 @@ The configuration is based on a `swagger.yaml` file. This file follows the swagg
 
 # Documentation
 
-- [Getting Started](https://github.com/direktiv/apps/blob/main/docs/README.md)
-- [Examples](https://github.com/direktiv/apps/blob/main/docs/examples/README.md)
+- [Getting Started](docs/README.md)
+- [Examples](docs/examples/README.md)
 
 # Talk to us!
 

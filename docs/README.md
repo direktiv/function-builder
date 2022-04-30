@@ -274,6 +274,51 @@ x-direktiv:
 
 ## Adding Commands
 
+There are four different types of commands implemented: `exec`, `foreach`, `http` and `httpForeach`. The next section will explain those commands and their configuration. 
+
+The `exec` command executes a command with command line arguments and other configuration options. It is the most powerful of the four different types. The following example uses all available configuration options:
+
+```yaml
+cmds:
+- action: exec
+  exec: bash -c 'echo { \"hello\": \"{{ .Hello }}\"  > /tmp/myfile }; env'
+  error: my.small.error
+  output: /tmp/myfile
+  continue: true
+  print: true
+  silent: {{ .DoPrint }}
+  env: ["KEY=value", "NAME={{ .Name }}"]
+```
+
+The folowing attributes can be used:
+
+### error
+
+If a command fails, Direktiv informs the user with an error code. The default value of `io.direktiv.command.error` is used for reporting problems if this field isn't defined. Otherwise this is used as error code. This is the only place where templating cannot be utilized.
+  
+### output
+
+This field reads the nominated file and uses this as reposnse for the command. The default behaviour is to use the output from standard out but this field changes that behaviour. In the above example the `exec` instruction writes the result in `/tmp/myfile` and this will be used as result for this command. This is not the overall response for the service, just for this command.
+
+### continue
+
+This field controls the behaviour in case of an error. The default behaviour is to throw an error if the execution fails. If continue is set to `true` the execution is marked as failed but the service continues with either executing the next command or returning if it is the last or only one.  
+
+### print
+
+By default the command with all arguments is getting printed to the log file. In cases where sensitive data is part of the command it can be supressed with setting `print` to false.
+
+### silent
+
+A command can be executed in `silent` mode which means it is not printing to the logs. The command supresses all output.
+
+### env
+
+This defines the environment variables for the command. Templating can be used for the keys as well as the values.
+
+
+## Adding Foreach
+
 
 
 <!-- run.sh -->
