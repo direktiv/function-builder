@@ -8,11 +8,11 @@ docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder init bash
 
 # Service
 
-Because this service will be based on `bash` we will use two commands to count word occurrences in a webpage. The first command is `curl` to fetch it and `grep` and `wc` to do the actual searching and counting. But let's look at the input first. 
+Because this service will be implemented in `bash`, we'll utilize three commands to count word occurrences on a webpage with curl. The first command is curl to get actually get it, and the other ones are grep and wc to do the actual searching and counting. But, before we go any further, let's take a look at the input.
 
 # Input
 
-We want to accept two parameters. A URL and a search term. Both are string values and are required to make this service work. Therefore we need to change the body input configuration to the following to define two parameters `url` and `search`:
+We need to accept two arguments. An `address` and a `search` phrase. Both are string values, and they are required to make this service operate. We need to edit the body input configuration to read as follows:
 
 
 ```yaml
@@ -39,7 +39,7 @@ exec: |-
     bash -c 'curl -sL {{ .Address }} | grep -o -i {{ .Search }} | wc -l'
 ```
 
-As you can see we are using [go templating](https://pkg.go.dev/text/template) here. Because how this templating works we need to upper-case the variables but this template means we are replacing `{{ .Address }}` with the incoming value as well as `search` in the `grep` instruction. For now don't want to change the output to something custom so we can comment that out for now. The `x-direktiv` section should look like this now:
+As you can see we are using [go templating](https://pkg.go.dev/text/template) here. Because how go templating works we need to upper-case the variables. This template means we are replacing `{{ .Address }}` with the incoming value as well as `search` in the `grep` instruction. For now don't want to change the output to something custom so we can comment that out for now. The `x-direktiv` section should look like this now:
 
 ```yaml
 x-direktiv:   
@@ -53,7 +53,7 @@ x-direktiv:
     #   }
 ```
 
-It is now time to generate the code and run it. Generating the code is pretty simple and requires just one command which needs to be executed in the folder where the `init` command has been executed. 
+The code is now ready to be generated and run. The procedure for generating the code is straightforward, and it only takes one command to execute in the folder where the init command was run.
 
 ```
 docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder gen v1.0.0
@@ -84,7 +84,7 @@ FROM ubuntu:21.04
 
 RUN apt-get update && apt-get install ca-certificates -y
 
-# make sure it is installed
+# make sure curl and grep are installed
 RUN apt-get update && apt-get install curl grep -y
 
 COPY --from=build /application /bin/application
@@ -105,7 +105,7 @@ If we run the service again with `run.sh` and executing a search again it will r
 ]
 ```
 
-Our service is working but we want to make the output a little bit more readable. For this we can change the `output` we commented out before and change the name. The output is using a template as well and it is actually quite simple. Without an output specified the service returns an array of the results of the commands it has executed. In this case it was only one. To get the first item in the list we use `(index . 0)` and from this first item we want the `result` value: `{{ index (index . 0) "result" }}`.
+Our service is working but we want to make the output a little bit more readable. For this we can change the `output` we commented out before and change the name. The output is using a template as well and it is actually quite simple. Without an output specified the service returns an array of the results of the commands it has executed. In this case it was only one. To get the first item in the list we use `(index . 0)` and from this first item we want the `result` value: `{{ index (index . 0) "result" }}`. The final swagger.yaml file can be seen [here](v.1.0.0/swagger.yaml).
 
 ```yaml
 x-direktiv:   

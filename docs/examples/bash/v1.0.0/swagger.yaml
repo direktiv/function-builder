@@ -55,7 +55,6 @@ paths:
                 type: string
       # direktiv code generation is configured here
       x-direktiv:   
-        debug: true
         cmds:
         - action: exec
           exec: |-

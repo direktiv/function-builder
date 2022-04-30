@@ -46,7 +46,15 @@ type accParams struct {
 }
 
 type accParamsTemplate struct {
-	PostBody
+	{{- range $i,$e := .Params }}
+	{{- if eq $e.Name "body" }}
+	{{- if eq $e.Schema.GoType "interface{}"}}
+	In {{ $e.Schema.GoType }}
+	{{- else }}
+	{{ $e.Schema.GoType }}
+	{{- end }}
+	{{- end }}
+	{{- end }}
 	Commands []interface{}
 }
 

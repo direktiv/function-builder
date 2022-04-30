@@ -17,7 +17,22 @@ import (
 {{- end }}
 
 func fileExists(file string) bool {
+	_, err := os.Open(file)
+	if err != nil {
+		return false
+	}
 	return true
+}
+
+func deref(dd interface{}) interface{} {
+	switch p := dd.(type) {
+	case *string:
+		return *p
+	case *int:
+		return *p
+	default:
+		return p
+	}
 }
 
 func templateString(tmplIn string, data interface{}) (string, error) {
@@ -29,6 +44,7 @@ func templateString(tmplIn string, data interface{}) (string, error) {
 
 	tmpl, err := template.New("base").Funcs(sprig.FuncMap()).Funcs(template.FuncMap{
 		"fileExists": fileExists,
+		"deref": deref,
 	}).Parse(tmplIn)
 	if err != nil {
 		{{- if $printDebug }}

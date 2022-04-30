@@ -36,6 +36,7 @@ Distributed under the Apache 2.0 License. See `LICENSE` for more information.
 * The [direktiv.io](https://direktiv.io/) website.
 * The direktiv [documentation](https://docs.direktiv.io/).
 * The direktiv [blog](https://blog.direktiv.io/).
+* [Go Swagger](https://github.com/go-swagger/go-swagger)
 
 
 <!-- # Direktiv Action Builder

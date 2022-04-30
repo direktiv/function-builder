@@ -68,7 +68,7 @@ CMD ["/bin/application", "--port=8080", "--host=0.0.0.0"]
 
 **2. swagger.yaml**
 
-This file is the configuration file for the service and the configuration options will be explained in this documentation.
+This file is the configuration file for the service and the configuration options will be explained in this documentation. An example can be seen [here](examples/bash/v1.0.0/swagger.yaml).
 
 **3. run.sh**
 
@@ -125,6 +125,8 @@ If the service requires e.g. a list of integers it could be changed to the follo
 
 With this configuration additional properties sent to the service from Direktiv will be ignored and can not be used in templating later in the command section. This behaviour can be changed with the attribute `additionalProperties`. If set to `true` the data will be available. Alternatively the input can be unspecified without any checks. This would accept every JSON payload from Direktiv.
 
+> **TIP**: If the `additionalProperties` approach is used the variables of the incoming request can not be access directly e.g. `{{ .Name }}` but in an wrapper variable `In` because the data becomes a map. It has to be access with `{{ index .In "name" }}`.
+
 ```yaml
 - name: body
   in: body
@@ -167,7 +169,7 @@ To make a logical link between this input configuration and the Direktiv service
 *3. Service Payload*
 ```json
 {
-    "name": "jens",
+  "name": "jens",
 	"values": [
 		1,
 		2,
@@ -177,3 +179,103 @@ To make a logical link between this input configuration and the Direktiv service
 ```
 
 ## Configuring the Commands
+
+The commands to be executed are defined in the `x-direktiv` section under `cmds`. Multiple commands can be configured and the response will be an array of the results of each command.
+
+*Example Configuration in swagger.yaml*
+```yaml
+x-direktiv:  
+  cmds:
+  - action: exec
+    exec: echo 'Hello'
+  - action: exec
+    exec: echo 'World'
+```
+
+*Example Service Response*
+```json
+[
+	{
+		"result": "Hello",
+		"success": true
+	},
+	{
+		"result": "World",
+		"success": true
+	}
+]
+```
+
+In almost all attributes in this section go templating can be used. During runtime the values provided in the attributes, e.g. `exec` are getting parsed with the data configured in the [input](#configuring-the-input) section. If a e.g. a `name` attribute is configured in the input section it can be used as `{{ .Name }}`. 
+
+The nature of the template engine requires the attributes to be upper-case. If there are problems during development there is a `debug` field which can be used to add additional debug information to the application. In particular the input and input data for the templating are printed to the console. 
+
+**Enabling debug**
+```yaml
+ x-direktiv:  
+  # enable debug output
+  debug: true 
+  cmds:
+  - action: exec
+    exec: echo Hello
+```
+
+The Service Builder supports all go templating commands plus the extension library [sprig](http://masterminds.github.io/sprig/). That means within the fields even `if` or `range` statements can be executed (The `-` in `{{- }}` avoids new lines). 
+
+**Example 'if' Statement**
+```yaml
+x-direktiv:  
+  cmds:
+  - action: exec
+    exec: |- 
+      echo {{- if eq (deref .Name) "Mike" }} Go away Mike{{- else }} Hello {{ .Name }}{{- end }}
+```
+
+> **Note:** For string or integer comparison the values need to be dereferenced with `deref`. The `debug` can provide more details if there are any problems with templating.
+
+**Example 'range' Statement**
+```yaml
+x-direktiv:  
+  cmds:
+  - action: exec
+    exec: echo  Hello {{- range $i,$n := .Names }} {{ $n }} {{- end }}
+```
+
+By default these commands are getting returned as array of commands. There is an additional `output` field which will be used as service response if it is configured. This is usefule if multiple commands or scripts need to run but the response should not show all the executed commands. This seciton has to be configured as JSON response but templating can be used here as well. 
+
+**Example Output**
+```yaml
+x-direktiv:  
+  cmds:
+  - action: exec
+    exec: echo Hello {{ .Name }}
+  output: |
+    {
+      "this-is-the-hello-value": "{{ index (index . 0) "result" }}"
+    }
+```
+
+The `output` instruction has access to all executed commands. As seen before all results are in array. The previous exmplae accesses the first command result with `(index . 0)`. The command result is a map with the values `result` and `success` so to fetch the result it uses `index` again. In case the result is JSON and not text the templating can access indivdiual values/attributes from the JSON. As with the other fields `if` statements and other template instructions can be used as well.
+
+```yaml
+x-direktiv:  
+  cmds:
+  - action: exec
+    exec: echo Hello {{ .Name }}
+  output: |
+    { 
+      {{- if index (index . 0) "success" }}
+            "this-is-the-hello-value": "{{ index (index . 0) "result" }}"
+      {{- else }}
+            "did": "not work"
+      {{- end }}
+    }
+```
+
+## Adding Commands
+
+
+
+<!-- run.sh -->
+
+
