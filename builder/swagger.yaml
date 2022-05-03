@@ -178,11 +178,21 @@ paths:
       x-direktiv:  
         debug: true
         cmds:
+        - action: foreachHttp
+          loop: .Names
+          url: http://www.direktiv.io/{{ .Item }}
+          method: get
+          headers: 
+            - Content-Type: application/json
+          data: |
+            {
+              "myname": "{{ .Name }}"
+            }
         # file handling
-        - action: exec
-          exec: echo jens
-          error: my.small.error
-          output: /tmp/kk
+        # - action: exec
+        #   exec: echo jens
+        #   error: my.small.error
+        #   output: /tmp/kk
         # single commands
           # - action: exec
           #   exec: |-

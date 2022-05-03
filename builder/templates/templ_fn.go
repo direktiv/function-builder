@@ -314,14 +314,19 @@ func runCommand{{ $i }}(ctx context.Context,
 
 		var data []byte
 		{{- if .data }}
+
 		value, err := templateString(`{{ .data }}`, ls)
 		if err != nil {
 			return cmds, err
 		}
+
+		{{- if $printDebug }}
+		fmt.Printf("sending data: %v\n", value)
+		{{- end }}
+
 		data = []byte(value)
 		{{- else if .data64 }}
 
-		fmt.Println("BASE64 {{ .data64 }}")
 		value, err := templateString(`{{ .data64 }}`, ls)
 		if err != nil {
 			return cmds, err

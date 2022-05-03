@@ -39,7 +39,8 @@ layout:
       target: "{{ if gt (len .Tags) 0 }}{{ joinFilePath .Target .ServerPackage .APIPackage .Package  }}{{ else }}{{ joinFilePath .Target .ServerPackage .Package  }}{{ end }}"
       file_name: "direktiv_{{ .Name }}.go"
     - name: parameters
-      source: asset:serverParameter
+      # source: asset:serverParameter
+      source: templates/templ_parameters.go
       target: "{{ if gt (len .Tags) 0 }}{{ joinFilePath .Target .ServerPackage .APIPackage .Package  }}{{ else }}{{ joinFilePath .Target .ServerPackage .Package  }}{{ end }}"
       file_name: "{{ (snakize (pascalize .Name)) }}_parameters.go"
     - name: responses
