@@ -6,4 +6,10 @@ For a better understanding we are providing three simple examples how to use the
 
 This simple service accepts a URL and a string. The service searches the webpage for that string and returns the number of hits in the webpage. 
 
-[Go to bash example](bash/bash.md)
+[Go to bash example](bash/README.md)
+
+## AWS Service
+
+This service returns all instances in a region. It uses environment variables and uses default values.
+
+[Go to AWS example](aws/README.md)

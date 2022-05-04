@@ -1,15 +1,12 @@
 swagger: "2.0"
 info:
-  description: Description for APPNAME
-  title: APPNAME
+  description: Description for aws-cli
+  title: aws-cli
   version: 1.0.0
   x-direktiv:
-    container: direktiv/APPNAME
-    maintainer: 
-    category: Unknown
-    license: |
-      [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
-    long-description: This is a longer description for the application APPNAME
+    container: direktiv/aws-cli
+    category: unknown
+    long-description: This is a longer description for the application aws-cli
 consumes:
 - application/json
 produces:
@@ -49,21 +46,27 @@ paths:
           schema:
             type: object
             required:
-              - name
+              - access-key
+              - secret-key
             properties:
-              name:
+              access-key:
                 type: string
-                example: YourName
-                description: The full name for the greeting
+              secret-key:
+                type: string
+              region:
+                type: string
       # direktiv code generation is configured here
-      x-direktiv:  
+      x-direktiv:
+        debug: true  
         cmds:
         - action: exec
-          exec: echo 'Hello {{ .Name }}'
-        output: |
-          {
-            "greeting": "{{ index (index . 0) "result" }}"
-          }
+          exec: aws ec2 describe-instances --query "Reservations[].Instances[].InstanceId"
+          env:  
+            - AWS_ACCESS_KEY_ID={{ .AccessKey }}
+            - AWS_SECRET_ACCESS_KEY={{ .SecretKey }}
+            - AWS_DEFAULT_REGION={{ default "us-east-1" .Region }}
+        output: |-
+          { "instances": {{ index (index . 0) "result"  | toJson }} }
       responses:
         200:
           description: nice greeting
