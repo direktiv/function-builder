@@ -44,9 +44,6 @@ func configureFlags(api *{{.APIPackageAlias}}.{{ pascalize .Name }}API) {
   // api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{ ... }
 }
 
-
-// out.errCode = resp.Header.Get("Direktiv-ErrorCode")
-// out.errMsg = resp.Header.Get("Direktiv-ErrorMessage")
 func errorAsJSON(err errors.Error) []byte {
 	b, _ := json.Marshal(struct {
 		Code    int32  `json:"errorCode"`

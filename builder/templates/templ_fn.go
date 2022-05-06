@@ -1,5 +1,86 @@
 package {{.Package}}
 
+{{- define "HTTPHEADERS" }}
+headers := make(map[string]string)
+{{- range $i,$h := .headers }}
+{{- range $k,$v := $h }}
+Header{{ $i }}, err := templateString(`{{ $v }}`, params)
+headers["{{ $k }}"] = Header{{ $i }}
+{{- end }}
+{{- end }}
+{{ $rh := index . "runtime-headers"}}
+{{- if $rh }}
+for k,v := range params.Body{{ $rh }} {
+	headers[k] = v
+} 
+{{- end }}
+{{- end }}
+
+{{- define "HTTPDATA" }}
+attachData := func(paramsIn interface{}, ri *apps.RequestInfo) ([]byte, error) {
+
+	kind, err := templateString(`{{ index .data "kind" }}`, paramsIn)
+	if err != nil {
+		return nil, err
+	}
+
+	d, err := templateString(`{{ index .data "value" }}`, paramsIn)
+	if err != nil {
+		return nil, err
+	}
+
+	if kind == "file" {
+		return os.ReadFile(filepath.Join(ri.Dir(), d))
+	} else if kind == "base64" {
+		return base64.StdEncoding.DecodeString(d)
+	}
+
+	return []byte(d), nil
+	
+}
+{{- end }}
+
+{{- define "HTTPBASE" }}
+
+type baseRequest struct {
+	url, method, user, password string
+	insecure, err200 bool
+}
+
+baseInfo := func(paramsIn interface{}) (*baseRequest, error) {
+
+	u, err := templateString(`{{ .url }}`, paramsIn)
+	if err != nil {
+		return nil, err
+	}
+
+	method, err := templateString(`{{ .method }}`, paramsIn)
+	if err != nil {
+		return nil, err
+	}
+
+	user, err := templateString(`{{ .username }}`, paramsIn)
+	if err != nil {
+		return nil, err
+	}
+
+	password, err := templateString(`{{ .password }}`, paramsIn)
+	if err != nil {
+		return nil, err
+	}
+
+ 	return &baseRequest{
+		url: u,
+		method: method,
+		user: user,
+		password: password,
+		err200: convertTemplateToBool(`{{ .errorNo200 }}`, paramsIn, true), 
+		insecure: convertTemplateToBool(`{{ .insecure }}`, paramsIn, false), 
+	}, nil
+
+}
+{{- end }}
+
 {{- $printDebug := false }}
 
 {{- if eq .Name "Post" }}
@@ -11,7 +92,6 @@ package {{.Package}}
 {{- if ne $debug nil }}
 	{{- $printDebug = $debug }}
 {{- end }}
-
 
 import (
 	{{- if $printDebug }}
@@ -129,6 +209,11 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	if err != nil {
 		return generateError(outErr, err)
 	}
+
+	{{- if $printDebug }}
+	fmt.Printf("object from output template: %+v\n", s)
+	{{- end}}
+
 	responseBytes := []byte(s)
 	{{/* default answer */}}
 	{{- else }}
@@ -139,13 +224,21 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	{{- if eq .SuccessResponse.Schema.GoType "interface{}"}}
 	err = json.Unmarshal(responseBytes, &resp)
 	if err != nil {
+		{{- if $printDebug }}
+		fmt.Printf("error parsing output template: %+v\n", err)
+		{{- end}}
 		return generateError(outErr, err)
 	}
 	{{- else }}
 	// validate
+
 	resp.UnmarshalBinary(responseBytes)
 	err = resp.Validate(strfmt.Default)
+
 	if err != nil {
+		{{- if $printDebug }}
+		fmt.Printf("error parsing output template: %+v\n", err)
+		{{- end}}
 		return generateError(outErr, err)
 	}
 	{{- end}}
@@ -279,66 +372,27 @@ func runCommand{{ $i }}(ctx context.Context,
 			params.Body{{ .loop }}[a],
 		}
 
-		u, err := templateString(`{{ .url }}`, ls)
+		{{ template "HTTPBASE" . }}
+		br, err := baseInfo(ls)
 		if err != nil {
 			return cmds, err
-		}
+		}	
 
-		method, err := templateString(`{{ .method }}`, ls)
-		if err != nil {
-			return cmds, err
-		}
-
-		user, err := templateString(`{{ .username }}`, ls)
-		if err != nil {
-			return cmds, err
-		}
-
-		password, err := templateString(`{{ .password }}`, ls)
-		if err != nil {
-			return cmds, err
-		}
-
-		ins := convertTemplateToBool(`{{ .insecure }}`, ls, false) 
-
-		headers := make(map[string]string)
-		{{- range $i,$h := .headers }}
-		{{- range $k,$v := $h }}
-		Header{{ $i }}, err := templateString(`{{ $v }}`, params)
-		headers["{{ $k }}"] = Header{{ $i }}
-		{{- end }}
-		{{- end }}
-	
-		err200 := {{ if ne .errorNo200 nil }}{{.errorNo200}}{{ else }}true{{ end }}
-		ri.Logger().Infof("%v request to %v", method, u)
+		{{ template "HTTPHEADERS" . }}
 
 		var data []byte
-		{{- if .data }}
-
-		value, err := templateString(`{{ .data }}`, ls)
-		if err != nil {
-			return cmds, err
-		}
-
-		{{- if $printDebug }}
-		fmt.Printf("sending data: %v\n", value)
-		{{- end }}
-
-		data = []byte(value)
-		{{- else if .data64 }}
-
-		value, err := templateString(`{{ .data64 }}`, ls)
-		if err != nil {
-			return cmds, err
-		}
-		data, err = base64.StdEncoding.DecodeString(value)
+		{{- if index . "data" }}
+		{{ template "HTTPDATA" . }}
+		data, err = attachData(ls, ri)
 		if err != nil {
 			return cmds, err
 		}
 		{{- end }}
+		
 
-		r, _ := doHttpRequest(method, u, user, password, 
-			headers, ins, err200, data)
+		ri.Logger().Infof("requesting %v", br.url)
+		r, _ := doHttpRequest(br.method, br.url, br.user, br.password, 
+			headers, br.insecure, br.err200, data)
 
 		ri.Logger().Infof("request result code %v", r["code"])
 		cmds = append(cmds, r)
@@ -367,66 +421,31 @@ func runCommand{{ $i }}(ctx context.Context,
 	ir := make(map[string]interface{})
 	ir[successKey] = false
 
-	u, err := templateString(`{{ .url }}`, at)
+	{{ template "HTTPBASE" . }}
+	br, err := baseInfo(at)
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
 	}
 
-	method, err := templateString(`{{ .method }}`, at)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-
-	user, err := templateString(`{{ .username }}`, at)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-
-	password, err := templateString(`{{ .password }}`, at)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-
-	ins := convertTemplateToBool(`{{ .insecure }}`, at, false) 
-
-	headers := make(map[string]string)
-	{{- range $i,$h := .headers }}
-	{{- range $k,$v := $h }}
-	Header{{ $i }}, err := templateString(`{{ $v }}`, params)
-	headers["{{ $k }}"] = Header{{ $i }}
-	{{- end }}
-	{{- end }}
-
-	err200 := {{ if ne .errorNo200 nil }}{{.errorNo200}}{{ else }}true{{ end }}
-	ri.Logger().Infof("%v request to %v", method, u)
+	{{ template "HTTPHEADERS" . }}
 
 	var data []byte
-	{{- if .data }}
-	value, err := templateString(`{{ .data }}`, params)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-	data = []byte(value)
-	{{- else if .data64 }}
-	value, err := templateString(`{{ .data64 }}`, params)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
-	}
-	data, err = base64.StdEncoding.DecodeString(value)
-	if err != nil {
-		ir[resultKey] = err.Error()
-		return ir, err
+	{{- if index . "data" }}
+	{{ template "HTTPDATA" . }}
+
+	if params.Body.Content != nil {
+		data, err = attachData(at, ri)
+		if err != nil {
+			ir[resultKey] = err.Error()
+			return ir, err
+		}
 	}
 	{{- end }}
 
-	return doHttpRequest(method, u, user, password, 
-		headers, ins, err200, data)
+	ri.Logger().Infof("requesting %v", br.url)
+	return doHttpRequest(br.method, br.url, br.user, br.password, 
+		headers, br.insecure, br.err200, data)
 
 }
 

@@ -10,13 +10,12 @@ COPY restapi src/restapi/
 
 RUN cd src && \
     export CGO_LDFLAGS="-static -w -s" && \
-    go build -tags osusergo,netgo -o /application cmd/APPNAME-server/main.go; 
+    go build -tags osusergo,netgo -o /application cmd/http-request-server/main.go; 
 
 FROM ubuntu:21.04
 
 RUN apt-get update && apt-get install ca-certificates -y
 
-# DON'T CHANGE BELOW 
 COPY --from=build /application /bin/application
 
 EXPOSE 8080

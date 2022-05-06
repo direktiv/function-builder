@@ -1,17 +1,12 @@
 swagger: "2.0"
 info:
-  description: Description for APPNAME
-  title: APPNAME
+  description: Description for image-magick
+  title: image-magick
   version: 1.0.0
-  x-direktiv-meta:
-    container: direktiv/APPNAME
-    maintainer: 
-    issues:
-    url:  
-    category: Unknown
-    license: |-
-      [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)
-    long-description: This is a longer description for the application APPNAME
+  x-direktiv:
+    container: direktiv/image-magick
+    category: unknown
+    long-description: This is a longer description for the application image-magick
 consumes:
 - application/json
 produces:
@@ -51,25 +46,37 @@ paths:
           schema:
             type: object
             required:
-              - name
+              - commands
             properties:
-              name:
-                type: string
-                example: YourName
-                description: The full name for the greeting
+              commands:
+                type: array
+                items:
+                  type: string
+                description: |- 
+                  List of commands to run with ImageMagick. Image can be provided with `files` in Direktiv. 
+                example: 
+                  - convert original.png -resize 100x100! 
+              return:
+                type: boolean
+                description: |-
+                  If set to `true` it will return the modified image as base64.
+              store:
+                type: object
+                required:
+                  - scope
+                  - name
+                properties:
+                  scope:
+                    type: string
+                    enum: ["instance", "workflow", "namespace"]
+                    description: Scope where to save the image.
+                  name: 
+                    type: string
+                    description: Name of the variable.
+                example:
+                  scope: workflow
+                  name: myimage.png
       # direktiv code generation is configured here
-      x-direktiv-function: |-
-        functions:
-          - id: APPNAME
-            image: direktiv/APPNAME
-            type: knative-workflow
-      x-direktiv-examples:
-        - title: Basic
-          content: |-
-            - id: req
-                 type: action
-                 action:
-                   function: APPNAME
       x-direktiv:  
         cmds:
         - action: exec
@@ -78,10 +85,6 @@ paths:
           {
             "greeting": "{{ index (index . 0) "result" }}"
           }
-      x-direktiv-errors:
-        io.direktiv.command.error: Command execution failed
-	      io.direktiv.output.error: Template error for output generation of the service
-	      io.direktiv.ri.error: Can not create information object from request
       responses:
         200:
           description: nice greeting

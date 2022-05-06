@@ -1,7 +1,8 @@
  # Direktiv Service Builder
 
-Creating a new service takes three steps: configuring the input, the command, and output. This documentation will go through these three stages in detail, as well as all configuration choices. As a good technical individual, you may believe it's easier to just skip the documentation and go straight to the [examples](examples/README.md) as soon as possible. :wink:
+Creating a new app takes three steps: configuring the input, the command, and output. This documentation will go through these three stages in detail, as well as all configuration choices. As a good developer, you may believe it's easier to just skip the documentation and go straight to the [examples](examples/README.md) as soon as possible. :wink:. 
 
+- [Quickstart](#Quickstart)
 - [Initializing the Service](#initializing-the-service)
 - [Configuring the Input](#configuring-the-input)
 - [Configuring the Commands](#configuring-the-input)
@@ -16,6 +17,27 @@ Creating a new service takes three steps: configuring the input, the command, an
     - [Chaining Commands](#chaining-commands) 
     - [Direktiv File](#direktiv-file) 
 - [Custom Go Code](#custom-go-code)
+
+## Quickstart
+
+The initial `init` and `gen` steps are already creating a working demo service. To quickly test how that service builder works run the following commands in an empty folder:
+
+```
+# creates dockerfile, run.sh, swagger.yaml, go.mod
+docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder init myservice
+
+# generates the source code
+docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder gen
+
+# compiles the source code and builds container
+./run.sh
+```
+
+This will init, compile, build and start the service. It is accessible on [127.0.0.1:8080](127.0.0.1:8080):
+
+```
+curl -X POST -H "Direktiv-ActionID: development" -H "Content-Type: application/json"  http://127.0.0.1:8080 -d '{ "name": "myname" }'
+```
 
 ## Initializing the Service
 
@@ -33,7 +55,7 @@ docker run -v `pwd`:/tmp/app direktiv/service-builder init myservice
 docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder init myservice
 ```
 
-The container maps a local directory to the container and uses it as the base. In the above example, we used the Linux `pwd` command, but this can also be a static file path. The service name is the last argument. There will be a new folder named v1.0.0 in the designated target folder after launching the container, which contains four files.
+The container maps a local directory to the container and uses it as the base. In the above example, we used the Linux `pwd` command, but this can also be a static file path. The service name is the last argument. In the designated target folder, after running the container, will be four files:
 
 **1. Dockerfile**
 
@@ -380,6 +402,14 @@ The folowing attributes can be used:
 
 The URL and method to use for this request. This defines the actual request.
 
+### headers / runtime-headers
+
+Static headers can be set as a key/value pair where the value can be still use templating. For additional runtime headers the `runtime-headers` attribute can be used. This has to be a template value pointing to a key/value array in the payload.
+
+```yaml
+runtime-headers: .AdditionalHeaders
+```
+
 ### username / password
 
 If both values are set they are used for Basic Authentication. 
@@ -398,17 +428,31 @@ Continue has the same behaviour as in the `exec` context. If the request fails t
 
 ### data
 
-The data section provides the body if the request is a POST request. The `data` atttribute is for plain text content like JSON or XML. Templating can be used to dynamically change the content based on theinput of the service. 
+This can be used to add a payload to a POST request. This parameter is an object with two attributes `kind` and `value`. The first value defines what type of data is being posted.
 
-### data64
-
-For binary data this attribute is available. If set the data will be decoded and sent as body of the request. The base64 can be data coming from the input or a special template function `file64` reads a file from the filesystem and attaches it. 
+- string: Plain string data. Templates can be used with this kind. Value is the string to use.
+- base64: Base64 content will be converted into a byte array and send with the request. Value is the Base64 string. 
+- file: A file will be attached. Value is the file name. 
 
 ```yaml
-- action: http
-  url: http://www.direktiv.io/{{ .Path }}
-  method: get
-  data64: {{ file64 myfile.tar.gz }}
+x-direktiv:  
+  debug: true
+  cmds:
+  - action: http
+    url: https://myurl.com
+    method: post
+    # base64 example
+    data:
+      kind: base64
+      value: '{{ .Datain }}'
+    # string example
+    data:
+      kind: string
+      value: 'Send this: {{ .Datain }}'
+    # file example
+    data:
+      kind: file
+      value: direktiv-file.txt
 ```
 
 ## Adding HTTP Foreach
@@ -458,17 +502,17 @@ responses:
 
 ## Compiling and Running the Service
 
-After every change in the `swager.yaml` file configuration the service needs to be generated. This can be done with a simple command and the command must be run where the `init` command was used. The version number is the folder name used for the generation. If subsequent versions are stored e.g. in `v1.0.1` this has to change accordingly. 
+After every change in the `swagger.yaml` file configuration the service needs to be generated. This can be done with a simple command and the command must be run where the `init` command was executed. 
 
 ```
-docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder gen v1.0.0
+docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder gen
 ```
 
 The `init` phase created a convenience file `run.sh` which can be used to run and test the service. It compiles the service and starts a container exposing port `8080`. After starting it the service can be used with a simple `curl` or via the auto-generated docs/ui at [http://127.0.0.1:8080/docs](http://127.0.0.1:8080/docs). 
 
 **Runnning curl**
 ```
-curl -X POST -H "Direktiv-ActionID: development" -H "Content-Type: application/json"  http://127.0.0.1:9090 -d '{ "name": "myname" }'
+curl -X POST -H "Direktiv-ActionID: development" -H "Content-Type: application/json"  http://127.0.0.1:8080 -d '{ "name": "myname" }'
 ```
 
 DIREKTIV
@@ -555,7 +599,7 @@ x-direktiv:
 In cases where something very specific needs to be build the Service Builder can generate go skeleton code. The service needs to run the `init` command as well but the generate command is slightly different and `gen-custom` is used instead of `gen`.
 
 ```
-docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder gen-custom v1.0.0
+docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder gen-custom
 ```
 
 This generates all files similar to the code generation except two files:

@@ -1,0 +1,162 @@
+swagger: "2.0"
+info:
+  description: Description for http-request
+  title: http-request
+  version: 1.0.0
+  x-direktiv:
+    container: direktiv/http-request
+    maintainer: 
+    category: Unknown
+    license: |-
+      [https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)
+    long-description: This is a longer description for the application http-request
+consumes:
+- application/json
+produces:
+- application/json
+schemes:
+- http
+paths:
+  /: 
+    delete:
+      parameters:
+        - name: Direktiv-ActionID
+          in: header
+          type: string
+          description: |
+            On cancel Direktiv sends a DELETE request to
+            the action with id in the header
+      x-direktiv:
+        cancel: echo 'cancel {{ .DirektivActionID }}'
+      responses:
+        200:
+    post:
+      parameters:
+        - name: Direktiv-ActionID
+          in: header
+          type: string
+          description: |
+            direktiv action id is an UUID. 
+            For development it can be set to 'development'
+        - name: Direktiv-TempDir
+          in: header
+          type: string
+          description: |
+            direktiv temp dir is the working directory for that request
+            For development it can be set to e.g. '/tmp'
+        - name: body
+          in: body
+          schema:
+            type: object
+            required:
+              - url
+            properties:
+              url:
+                type: string
+                example: http://www.direktiv.io
+                description: URL for the request.
+              method:
+                type: string
+                enum: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS", "CONNECT", "TRACE", "PATCH"]
+                example: POST
+                description: HTTP method. Defaults to GET.
+              headers:
+                type: object
+                additionalProperties:
+                  type: string
+                example:
+                  myheader: value
+                description: List of key/values send as headers with the request.
+              params:
+                type: object
+                additionalProperties:
+                  type: string
+                example:
+                  query1: queryvalue
+                description: List of key/values appended to URL as query parameters.
+              username:
+                type: string
+                example: myuser
+                description: If username and password are set, it will be used for basic authenitcation for the request.
+              password:
+                type: string
+                example: mypassword
+                description: |-
+                  If username and password are set, it will be used for basic authenitcation for the request. 
+                  This should be passed in as Direktiv secret.
+              insecure:
+                type: boolean
+                example: true
+                description: Skips the verification the server certificate chain and host name.
+              error200:
+                type: boolean
+                example: true
+                description: If set to `true` responses with status above 299 will be treated as errors.
+              body:
+                type: object
+                properties:
+                  kind:
+                    type: string
+                    enum: ["string", "file", "base64"]
+                  value:
+                    type: string
+                example:
+                  kind: string
+                  value: This is the payload
+                description: |- 
+                  Defines the payload of the request. The `kind` value can have three different values: 
+                  - string: Plain string payload, e.g. JSON
+                  - base64: Will be "converted" to binary and attached
+                  - file: File payload
+      # direktiv code generation is configured here
+      x-direktiv:  
+        debug: true
+        cmds:
+        - action: http
+          url: https://webhook.site/38c796f4-bb9e-4d81-aad5-9e15e3cd5f4f
+          method: post
+          headers:
+            - jens: gerke1
+            - content-type: text/plain
+          data:
+            kind: string
+            value: HELLWORLD {{ .Headers }}
+          # exec: echo 'Hello {{ .Headers }}'
+        # output: |
+        #   {
+        #     "greeting": "{{ index (index . 0) "result" }}"
+        #   }
+      responses:
+        200:
+          description: nice greeting
+          schema:
+            type: object
+            additionalProperties: {}
+            example: 
+              greeting: Hello YourName
+        default:
+          description: generic error response
+          headers:
+            Direktiv-ErrorCode:
+              type: string
+            Direktiv-ErrorMessage:
+              type: string
+          schema:
+            $ref: "#/definitions/error"
+definitions:
+  direktivFile:
+    type: object
+    x-go-type:
+      type: DirektivFile
+      import:
+        package: github.com/direktiv/apps/go/pkg/apps 
+  error:
+    type: object
+    required:
+      - errorCode
+      - errorMessage
+    properties:
+      errorCode:
+        type: string
+      errorMessage:
+        type: string
