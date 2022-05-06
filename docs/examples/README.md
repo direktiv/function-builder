@@ -1,6 +1,6 @@
  # Direktiv Service Builder Examples
 
-For a better understanding we are providing three simple examples how to use the service builder. All examples assuming you did run the [`init`](../README.md#initializing-the-service) step already.
+For a better understanding we are providing two simple examples how to use the service builder. 
 
 ## Bash Service
 

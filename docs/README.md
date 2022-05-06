@@ -1,6 +1,6 @@
  # Direktiv Service Builder
 
-Creating a new app takes three steps: configuring the input, the command, and output. This documentation will go through these three stages in detail, as well as all configuration choices. As a good developer, you may believe it's easier to just skip the documentation and go straight to the [examples](examples/README.md) as soon as possible. :wink:. 
+Creating a new app takes three steps: configuring the input, the command, and output. This documentation will go through these three stages in detail, as well as all configuration choices. As a good developer, you may believe it's easier to just skip the documentation and go straight to the [examples](examples/README.md) as soon as possible :wink: or look at the [direktiv-apps repository](https://github.com/direktiv-apps). 
 
 - [Quickstart](#Quickstart)
 - [Initializing the Service](#initializing-the-service)
@@ -17,6 +17,7 @@ Creating a new app takes three steps: configuring the input, the command, and ou
     - [Chaining Commands](#chaining-commands) 
     - [Direktiv File](#direktiv-file) 
 - [Custom Go Code](#custom-go-code)
+- [Generate Documentation](#generate-documentation)
 
 ## Quickstart
 
@@ -611,4 +612,77 @@ They will not be overwritten and the implementation of the service need to be im
 
 The other file uses the function `DeleteDirektivHandle` to handle cancel requests from Direktiv. This function does not need to be implemented. Only if there is a requirement to handle cancel commands.
 
+## Generate Documentation
 
+Markdown documentation can be generated based on the `swagger.yaml` file. To get a complete documentation is recommended to provide examples and descriptions to input and response parameters. The [http-request](https://github.com/direktiv-apps/http-request/blob/main/swagger.yaml) is an example of a complete `swagger.yaml` file for documentation purposes. 
+
+There are new Direktiv specific attributes to improve the auto-generated documentation. These have no impact on the functionality of the service and are for documentation only:
+
+#### x-direktiv-function
+
+This attribute can be used to provide a copy-and-paste example of the function to use in Direktiv workflows.
+
+```yaml
+...
+paths:
+  /: 
+    post:
+      x-direktiv-function: |-
+        functions:
+          - id: request
+            image: direktiv/http-request
+            type: knative-workflow
+      parameters:
+...
+```
+
+#### x-direktiv-examples
+
+Examples can be helpful and in this section full examples of the usage can be provided to users of the service. They are in YAML but stored as string so comments can be added as well if required. 
+
+```yaml
+...
+paths:
+  /: 
+    post:
+      x-direktiv-examples:
+        - title: Basic
+          content: |-
+            - id: req
+                 type: action
+                 action:
+                   function: request
+                 input: 
+                 url: "http://www.direktiv.io"
+        - title: Post Request
+          content: |-
+            url: http://www.direktiv.io
+            method: post
+      parameters:
+...
+```
+
+
+#### x-direktiv-errors
+
+In this section custom errors can be added if they have been defined in one of the commands or custom go code has been written for the service. This
+
+```yaml
+...
+paths:
+  /: 
+    post:
+      parameters:
+      ...
+      x-direktiv-errors:
+        io.direktiv.command.error: Command execution failed
+        io.direktiv.output.error: Template error for output generation of the service
+        io.direktiv.ri.error: Can not create information object from request
+...
+```
+
+The doumentation can be generated with one command execute in a directory with a `swagger.yaml` file. This generates a README.md file for the service. 
+
+```
+docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder docs
+```
