@@ -41,9 +41,6 @@ function init_app() {
 generate_docs() {
     swagger generate markdown -f /tmp/app/swagger.yaml --output=/tmp/app/readme.md -t /tmp/app/ --template-dir=templates/ --with-flatten=full
     mv /tmp/app/readme.md /tmp/app/README.md
-
-    swagger generate markdown -f /tmp/app/swagger.yaml --output=/tmp/app/readme_original.md -t /tmp/app/
-
 }
 
 echo "runing builder with args $@"
