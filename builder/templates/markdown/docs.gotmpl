@@ -147,7 +147,9 @@ any
 {{- if .Info }}
   {{- with .Info }}
 # {{ .Title }} {{ .Version }}
+
 {{ .Description }}
+
 ---
 {{- $xd := (index .Extensions "x-direktiv-meta") }}
 {{- if ne (index $xd "category") nil }}
