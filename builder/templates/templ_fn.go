@@ -331,8 +331,8 @@ func runCommand{{ $i }}(ctx context.Context,
 			continue
 		}
 
-		silent := {{ if ne .silent nil }}templateString("{{ .silent }}", ls){{ else }}false{{ end }}
-		print := {{ if ne .print nil }}templateString("{{ .print }}", ls){{ else }}true{{ end }}
+		silent := convertTemplateToBool("{{ .silent }}", ls, false)
+		print := convertTemplateToBool("{{ .print }}", ls, true)
 		output := "{{ if ne .output nil }}{{.output}}{{ end }}"
 
 		envs := []string{}
@@ -341,7 +341,14 @@ func runCommand{{ $i }}(ctx context.Context,
 			envs = append(envs, env{{ $i }})
 		{{- end }} 
 
-		r, _ := runCmd(ctx, cmd, envs, output, silent, print, ri)
+		r, err := runCmd(ctx, cmd, envs, output, silent, print, ri)
+		if err != nil {
+			ir := make(map[string]interface{})
+			ir[successKey] = false
+			ir[resultKey] = err.Error()
+			cmds = append(cmds, ir)
+			continue
+		}
 		cmds = append(cmds, r)
 
 	}

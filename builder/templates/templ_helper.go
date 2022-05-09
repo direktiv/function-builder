@@ -119,6 +119,10 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 		return ir, err
 	}
 
+	if len(a) == 0 {
+		return ir, fmt.Errorf("command '%v' parsed to empty array", cmdString)
+	}
+
 	// get the binary and args
 	bin := a[0]
 	argsIn := []string{}
@@ -127,16 +131,21 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 	}
 
 	logger := io.Discard
+	stdo := io.Discard
 	if !silent {
 		logger = ri.LogWriter()
+		stdo = os.Stdout
 	}
 
 	var o bytes.Buffer
-	mw := io.MultiWriter(os.Stdout, &o, logger)
+	var oerr bytes.Buffer
+
+	mwStdout := io.MultiWriter(stdo, &o, logger)
+	mwStdErr := io.MultiWriter(os.Stdout, &oerr, logger)
 	
 	cmd := exec.CommandContext(ctx, bin, argsIn...)
-	cmd.Stdout = mw
-	cmd.Stderr = mw
+	cmd.Stdout = mwStdout
+	cmd.Stderr = mwStdErr
 	cmd.Dir = ri.Dir()
 	cmd.Env = append(os.Environ(), envs...)
 
@@ -147,7 +156,7 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 	err = cmd.Run()
 
 	if err != nil {
-		ir[resultKey] = err.Error()
+		ir[resultKey] = string(oerr.String())
 		return ir, err
 	}
 
@@ -170,7 +179,7 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 	var rj interface{}
 	err = json.Unmarshal(b, &rj)
 	if err != nil {
-		rj = apps.ToJSON(o.String())
+		rj = apps.ToJSON(string(b))
 	} 
     ir[resultKey] = rj
 

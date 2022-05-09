@@ -194,7 +194,22 @@ any
   {{- end }}
 {{- end }}
 
-### Responses
+### Request
+
+{{- range .Operations }}
+{{- range .Params }}
+{{- if .IsBodyParam }}
+
+{{ .Description }}
+
+#### Request Attributes
+{{ template "docSchemaSimple" .Schema }}
+
+{{- end }}
+{{- end }}
+{{- end }}
+
+### Response
 
 {{- range .Operations }}
   {{- if eq .Name "Post" }}

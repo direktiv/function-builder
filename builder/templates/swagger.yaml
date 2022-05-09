@@ -80,8 +80,8 @@ paths:
           }
       x-direktiv-errors:
         io.direktiv.command.error: Command execution failed
-	      io.direktiv.output.error: Template error for output generation of the service
-	      io.direktiv.ri.error: Can not create information object from request
+        io.direktiv.output.error: Template error for output generation of the service
+        io.direktiv.ri.error: Can not create information object from request
       responses:
         200:
           description: nice greeting
