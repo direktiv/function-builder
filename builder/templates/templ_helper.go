@@ -159,6 +159,9 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 		ir[resultKey] = string(oerr.String())
 		if oerr.String() == "" {
 			ir[resultKey] = err.Error()
+		} else {
+			ri.Logger().Errorf(oerr.String())
+			err = fmt.Errorf(oerr.String())
 		}
 		return ir, err
 	}

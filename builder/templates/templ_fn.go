@@ -179,12 +179,15 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 		nil,
 	}
 
+
 	{{- range $i,$e := $commands }}
 
 	ret, err = runCommand{{ $i }}(ctx, accParams, ri)
 	responses = append(responses, ret)
 
-	if err != nil && {{ if ne .continue nil }}!{{ .continue }}{{ else }}true{{ end }} {
+	cont := convertTemplateToBool("{{ .continue }}", accParams, true)
+
+	if err != nil && !cont {
 		errName := {{- if ne .error nil }}"{{ .error }}"{{- else }}cmdErr{{- end }}
 		return generateError(errName, err)
 	}
@@ -333,6 +336,7 @@ func runCommand{{ $i }}(ctx context.Context,
 
 		silent := convertTemplateToBool("{{ .silent }}", ls, false)
 		print := convertTemplateToBool("{{ .print }}", ls, true)
+		cont := convertTemplateToBool("{{ .continue }}", ls, false)
 		output := "{{ if ne .output nil }}{{.output}}{{ end }}"
 
 		envs := []string{}
@@ -345,9 +349,15 @@ func runCommand{{ $i }}(ctx context.Context,
 		if err != nil {
 			ir := make(map[string]interface{})
 			ir[successKey] = false
-			ir[resultKey] = err.Error()
-			cmds = append(cmds, ir)
-			continue
+			ir[resultKey] = err.Error()	
+			cmds = append(cmds, ir)	
+
+			if cont {
+				continue
+			}
+
+			return cmds, err
+
 		}
 		cmds = append(cmds, r)
 
