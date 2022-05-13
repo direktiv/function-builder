@@ -109,6 +109,7 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 	{{- if $printDebug }}
 	fmt.Printf("evironment vars: %+v\n", envs)
 	{{- end}}
+	
 
 	ir := make(map[string]interface{})
 	ir[successKey] = false
@@ -154,9 +155,11 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 	}
 
 	err = cmd.Run()
-
 	if err != nil {
 		ir[resultKey] = string(oerr.String())
+		if oerr.String() == "" {
+			ir[resultKey] = err.Error()
+		}
 		return ir, err
 	}
 

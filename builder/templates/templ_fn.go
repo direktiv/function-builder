@@ -230,14 +230,14 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 		return generateError(outErr, err)
 	}
 	{{- else }}
-	// validate
 
+	// validate
 	resp.UnmarshalBinary(responseBytes)
 	err = resp.Validate(strfmt.Default)
 
 	if err != nil {
 		{{- if $printDebug }}
-		fmt.Printf("error parsing output template: %+v\n", err)
+		fmt.Printf("error parsing output object: %+v\n", err)
 		{{- end}}
 		return generateError(outErr, err)
 	}
