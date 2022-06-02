@@ -1,0 +1,3 @@
+test/secrets/*
+test/reports/*
+test/*data*.tar.gz

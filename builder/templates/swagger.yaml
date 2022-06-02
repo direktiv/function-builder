@@ -2,13 +2,14 @@ swagger: "2.0"
 info:
   description: Description for APPNAME
   title: APPNAME
-  version: 1.0.0
+  version: "1.0"
   x-direktiv-meta:
-    container: direktiv/APPNAME
+    container: gcr.io/direktiv/apps/APPNAME
     maintainer: 
     issues:
     url:  
-    category: Unknown
+    categories:
+    - unknown
     license: |-
       [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)
     long-description: This is a longer description for the application APPNAME
@@ -61,7 +62,7 @@ paths:
       x-direktiv-function: |-
         functions:
           - id: APPNAME
-            image: direktiv/APPNAME
+            image: gcr.io/direktiv/apps/APPNAME:1.0
             type: knative-workflow
       x-direktiv-examples:
         - title: Basic

@@ -43,7 +43,6 @@ func (m *DirektivFile) ContextValidate(ctx context.Context, formats strfmt.Regis
 		return err
 	}
 	defer f.Close()
-	fmt.Printf("CREATING FILE %v\n", f.Name())
 
 	mode := os.FileMode(0644)
 	if m.Mode != "" {

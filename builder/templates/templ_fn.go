@@ -126,6 +126,7 @@ const (
 type accParams struct {
 	PostParams
 	Commands []interface{}
+	DirektivDir string
 }
 
 type accParamsTemplate struct {
@@ -139,6 +140,12 @@ type accParamsTemplate struct {
 	{{- end }}
 	{{- end }}
 	Commands []interface{}
+	DirektivDir string
+}
+
+type ctxInfo struct {
+	cf context.CancelFunc
+	cancelled bool
 }
 
 func PostDirektivHandle(params PostParams) middleware.Responder {
@@ -158,6 +165,7 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	var (
 		err error
 		ret interface{}
+		cont bool
 	)
 
 	ri, err := apps.RequestinfoFromRequest(params.HTTPRequest)
@@ -166,8 +174,13 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	}
 
 	ctx, cancel := context.WithCancel(params.HTTPRequest.Context())
-	sm.Store(*params.DirektivActionID, cancel)
-	defer sm.Delete(params.DirektivActionID)
+
+	sm.Store(*params.DirektivActionID, &ctxInfo{
+		cancel, 
+		false,
+	})
+
+	defer sm.Delete(*params.DirektivActionID)
 
 	{{/* command section */}}
 	{{- $length := len $commands }}
@@ -177,6 +190,7 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	accParams := accParams{
 		params,
 		nil,
+		ri.Dir(),
 	}
 
 
@@ -185,10 +199,29 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	ret, err = runCommand{{ $i }}(ctx, accParams, ri)
 	responses = append(responses, ret)
 
-	cont := convertTemplateToBool("{{ .continue }}", accParams, true)
+	// if foreach returns an error there is no continue
+	{{- if ne (index $e "action") "foreach" }}
+	cont = convertTemplateToBool("{{ .Continue }}", accParams, true)
+	{{- else }}
+	cont = false
+	{{- end }}
+
+
 
 	if err != nil && !cont {
+
 		errName := {{- if ne .error nil }}"{{ .error }}"{{- else }}cmdErr{{- end }}
+
+		// if the delete function added the cancel tag
+		ci, ok :=  sm.Load(*params.DirektivActionID)
+		if ok {
+			cinfo, ok := ci.(*ctxInfo)
+			if ok && cinfo.cancelled {
+				errName = "direktiv.actionCancelled"	
+				err = fmt.Errorf("action got cancel request")
+			}
+		}
+
 		return generateError(errName, err)
 	}
 
@@ -221,6 +254,9 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	{{/* default answer */}}
 	{{- else }}
 	responseBytes, err := json.Marshal(responses)
+	if err != nil {
+		return generateError(outErr, err)
+	}
 	{{- end  }}
 
 	{{- if .SuccessResponse.Schema }}
@@ -272,6 +308,7 @@ func runCommand{{ $i }}(ctx context.Context,
 	at := accParamsTemplate{
 		params.Body,
 		params.Commands,
+		params.DirektivDir,
 	}
 
 	{{- if $printDebug }}
@@ -295,6 +332,23 @@ func runCommand{{ $i }}(ctx context.Context,
 		envs = append(envs, env{{ $i }})
 	{{- end }} 
 
+	{{ $rh := index . "runtime-envs"}}
+	{{- if $rh }}
+	envTempl, err := templateString(`{{ $rh }}`, at) 
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+	var addEnvs []string
+	err = json.Unmarshal([]byte(envTempl), &addEnvs)
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+	envs = append(envs, addEnvs...)
+	{{- end }}
+
+
 	return runCmd(ctx, cmd, envs, output, silent, print, ri)
 
 }
@@ -305,6 +359,7 @@ func runCommand{{ $i }}(ctx context.Context,
 type LoopStruct{{ $i }} struct {
 	accParams 
 	Item interface{}
+	DirektivDir string
 }
 
 func runCommand{{ $i }}(ctx context.Context, 
@@ -319,6 +374,7 @@ func runCommand{{ $i }}(ctx context.Context,
 		ls := &LoopStruct{{ $i }}{
 			params,
 			params.Body{{ .loop }}[a],
+			params.DirektivDir,
 		}
 
 		{{- if $printDebug }}
@@ -344,6 +400,28 @@ func runCommand{{ $i }}(ctx context.Context,
 			env{{ $i }}, _ := templateString(`{{ $e }}`, ls) 
 			envs = append(envs, env{{ $i }})
 		{{- end }} 
+
+		{{ $rh := index . "runtime-envs"}}
+		{{- if $rh }}
+		envTempl, err := templateString(`{{ $rh }}`, ls) 
+		if err != nil {
+			ir := make(map[string]interface{})
+			ir[successKey] = false
+			ir[resultKey] = err.Error()
+			cmds = append(cmds, ir)
+			continue
+		}
+		var addEnvs []string
+		err = json.Unmarshal([]byte(envTempl), &addEnvs)
+		if err != nil {
+			ir := make(map[string]interface{})
+			ir[successKey] = false
+			ir[resultKey] = err.Error()
+			cmds = append(cmds, ir)
+			continue
+		}
+		envs = append(envs, addEnvs...)
+		{{- end }}
 
 		r, err := runCmd(ctx, cmd, envs, output, silent, print, ri)
 		if err != nil {
@@ -373,6 +451,7 @@ func runCommand{{ $i }}(ctx context.Context,
 type LoopStruct{{ $i }} struct {
 	accParams 
 	Item interface{}
+	DirektivDir string
 }
 
 func runCommand{{ $i }}(ctx context.Context, 
@@ -387,6 +466,7 @@ func runCommand{{ $i }}(ctx context.Context,
 		ls := &LoopStruct{{ $i }}{
 			params,
 			params.Body{{ .loop }}[a],
+			params.DirektivDir,
 		}
 
 		{{ template "HTTPBASE" . }}
@@ -432,6 +512,7 @@ func runCommand{{ $i }}(ctx context.Context,
 	at := accParamsTemplate{
 		params.Body,
 		params.Commands,
+		params.DirektivDir,
 	}
 
 
@@ -513,7 +594,7 @@ import (
 func DeleteDirektivHandle(params DeleteParams) middleware.Responder {
 
 	actionId := *params.DirektivActionID
-	defer sm.Delete(actionId)
+	// defer sm.Delete(actionId)
 
 	if actionId == "" {
 		return NewDeleteOK()
@@ -525,21 +606,24 @@ func DeleteDirektivHandle(params DeleteParams) middleware.Responder {
 		return NewDeleteOK()
 	}	
 
-	cancel, ok := sm.Load(actionId)
+	// cancel, ok := sm.Load(actionId)
+	ci, ok :=  sm.Load(actionId)
 	if !ok {
-		ri.Logger().Infof("can not load context for action id: %v", err)
+		ri.Logger().Infof("can not load context for action id1", err)
 		return NewDeleteOK()
 	}
+
+	cinfo, ok := ci.(*ctxInfo)
+	if !ok {
+		ri.Logger().Infof("can not load context for action id2")
+		return NewDeleteOK()
+	}
+
+	// set to cancelled
+	cinfo.cancelled = true
 
 	ri.Logger().Infof("cancelling action id %v", actionId)
-
-	cf, ok := cancel.(context.CancelFunc)
-	if !ok {
-		ri.Logger().Infof("can not get cancel function for action id: %v", err)
-		return NewDeleteOK()
-	}
-
-	cf()
+	cinfo.cf()
 
 	cmd, err := templateString("{{ $direktiv.cancel }}", params)
 	if err != nil {

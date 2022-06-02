@@ -229,7 +229,7 @@ x-direktiv:
 ]
 ```
 
-In almost all attributes in this section go templating can be used. During runtime the values provided in the attributes, e.g. `exec` are getting parsed with the data configured in the [input](#configuring-the-input) section. If a e.g. a `name` attribute is configured in the input section it can be used as `{{ .Name }}`. 
+In almost all attributes in this section go templating can be used. During runtime the values provided in the attributes, e.g. `exec` are getting parsed with the data configured in the [input](#configuring-the-input) section. If a e.g. a `name` attribute is configured in the input section it can be used as `{{ .Name }}`. The variable `DirektivDir` is always set and containes the working directory of the function.
 
 The nature of the template engine requires the attributes to be upper-case. If there are problems during development there is a `debug` field which can be used to add additional debug information to the application. In particular the input and input data for the templating are printed to the console. 
 
@@ -339,6 +339,19 @@ A command can be executed in `silent` mode which means it is not printing to the
 
 This defines the environment variables for the command. Templating can be used for the keys as well as the values.
 
+### runtime-envs
+
+If runtime environment variables are required, meaning the client sends environment variables to the service, the `runtime-envs` attribute can be used to add them to the static list in `env`. Ths attibute contains a template which has to return a JSON array of strings in `KEY=VALUE` format. The folowing example is taken from the terraform service. 
+
+```yaml
+runtime-envs: |
+  [
+  {{- range $index, $element := .Body.Args }}
+  {{- if $index}},{{- end}}
+  "TF_VAR_{{ $element.Name }}={{ $element.Value }}"
+  {{- end }}
+  ]
+```
 
 ## Adding Foreach
 
@@ -554,45 +567,6 @@ cmds:
   exec: echo 'Hello {{ .Name }}'
 - action: exec
   exec: echo 'The greeting was {{ index (index .Commands 0) "result" }}'
-```
-
-### Direktiv File
-
-Sometimes applications need a file to execute or read configurations. For most cases Direktiv's variables can and should be used. But in case only a small file is needed the special type `direktivFile` is provided. This parameter takes three attributes: name for the name of the file, data for the content and mode is the filemode assigned to the file.
-
-**Direktiv File in Input**
-```yaml
-- name: body
-  in: body
-  schema:
-    type: object
-    required:
-      - name
-    properties:
-      script:
-        $ref: "#/definitions/direktivFile"
-```
-
-After receiving the request the data is written to a file with the name provided in the request. Templating is not supported because that should be done in Direktiv with JQ or Javascript before it is getting sent to the service. With the above definition the following JSON could be a potential input for that service:
-
-```json
-{
-	"script": {
-		"name": "shell.sh",
-		"data": "#!/bin/bash\n echo Hello",
-		"mode": "0755"
-	}
-}
-```
-
-This would create a file `shell.sh` with the content provided in `data` and permissions `0755`. It could be used in a command like this:
-
-**Example Usage of**
-```yaml
-x-direktiv:  
-  cmds:
-  - action: exec
-    exec: ./shell.sh
 ```
 
 ## Custom Go Code

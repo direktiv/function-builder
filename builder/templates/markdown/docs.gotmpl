@@ -152,8 +152,10 @@ any
 
 ---
 {{- $xd := (index .Extensions "x-direktiv-meta") }}
-{{- if ne (index $xd "category") nil }}
-- #### Category: {{ index $xd "category" }} 
+{{- if (index $xd "categories") }}
+- #### Categories: {{ range $index, $element := (index $xd "categories") }}
+{{- if $index}}, {{ end }}{{ . }}
+{{- end }}
 {{- end }}
 - #### Image: {{ index $xd "container" }} 
 {{ if ne (index $xd "license") nil }}- #### License: {{ index $xd "license" }}{{- else }}- #### License: Unknown{{ end }}
