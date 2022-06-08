@@ -101,6 +101,7 @@ import (
 
 	"github.com/Masterminds/sprig"
 	"github.com/direktiv/apps/go/pkg/apps"
+	"github.com/go-openapi/strfmt"
 
 {{ imports .DefaultImports }}
 )
