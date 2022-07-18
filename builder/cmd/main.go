@@ -22,6 +22,14 @@ var genCmd = &cobra.Command{
 	},
 }
 
+var docsCmd = &cobra.Command{
+	Use:   "docs",
+	Short: "Generates documentation based on swagger.yaml",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return docs()
+	},
+}
+
 var rootCmd = &cobra.Command{
 	Use:   "service-builder",
 	Short: "A source code generator for Direktiv functions",
@@ -40,8 +48,13 @@ func init() {
 		"Directory with the initialised Direktiv function")
 	genCmd.MarkFlagRequired("directory")
 
+	docsCmd.Flags().StringVarP(&fnDir, "directory", "d", "",
+		"Directory with the initialised Direktiv function")
+	docsCmd.MarkFlagRequired("directory")
+
 	rootCmd.AddCommand(prepCmd)
 	rootCmd.AddCommand(genCmd)
+	rootCmd.AddCommand(docsCmd)
 
 }
 
