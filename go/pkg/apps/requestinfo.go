@@ -4,15 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"os"
-
-	// "encoding/base64"
-	// "fmt"
-	// "io"
 	"net/http"
-	// "os"
-	// "strconv"
-	// "strings"
+	"os"
 
 	"github.com/rs/zerolog"
 )

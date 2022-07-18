@@ -7,8 +7,8 @@ import (
 // https://github.com/otiai10/copy
 
 var prepCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Initializes the basic directory layout of a Direktiv function",
+	Use:   "prepare",
+	Short: "Prepares the basic directory layout of a Direktiv function",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return prepare()
 	},
@@ -41,16 +41,6 @@ func init() {
 
 	prepCmd.Flags().StringVarP(&fnName, "function", "f", "", "Name of the function")
 	prepCmd.MarkFlagRequired("function")
-	prepCmd.Flags().StringVarP(&fnDir, "directory", "d", "",
-		"Target directory. If not set a new directory with the name of the service will be created.")
-
-	genCmd.Flags().StringVarP(&fnDir, "directory", "d", "",
-		"Directory with the initialised Direktiv function")
-	genCmd.MarkFlagRequired("directory")
-
-	docsCmd.Flags().StringVarP(&fnDir, "directory", "d", "",
-		"Directory with the initialised Direktiv function")
-	docsCmd.MarkFlagRequired("directory")
 
 	rootCmd.AddCommand(prepCmd)
 	rootCmd.AddCommand(genCmd)

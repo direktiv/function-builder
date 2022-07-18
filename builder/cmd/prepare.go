@@ -24,26 +24,29 @@ var ef embed.FS
 
 func prepDir() error {
 
-	if fnDir == "" {
-		log.Printf("directory note set\n")
-		fnDir = fnName
+	var err error
+
+	fnDir, err = os.Getwd()
+	if err != nil {
+		log.Println(err)
 	}
 
 	log.Printf("using directory '%s'\n", fnDir)
 
-	// create dir
-	err := os.MkdirAll(fnDir, 0755)
-	if err != nil {
-		return err
-	}
-
 	// check if it is empty
-	e, err := os.ReadDir(fnDir)
+	entries, err := os.ReadDir(fnDir)
 	if err != nil {
 		return err
 	}
 
-	if len(e) > 0 {
+	hasFiles := false
+	for i := range entries {
+		f := entries[i]
+		if f.Name() != ".git" {
+			hasFiles = true
+		}
+	}
+	if hasFiles {
 		errMsg := fmt.Sprintf("target directory %s not empty", fnDir)
 		log.Println(errMsg)
 		return fmt.Errorf(errMsg)

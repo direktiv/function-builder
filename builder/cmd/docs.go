@@ -1,7 +1,8 @@
 package main
 
 import (
-	"fmt"
+	"log"
+	"os"
 	"path/filepath"
 
 	genmark "github.com/go-swagger/go-swagger/cmd/swagger/commands/generate"
@@ -10,15 +11,18 @@ import (
 
 func docs() error {
 
+	var err error
+
+	fnDir, err = os.Getwd()
+	if err != nil {
+		log.Println(err)
+	}
+
 	swaggerFile := filepath.Join(fnDir, "swagger.yaml")
 	readmeFile := filepath.Join(fnDir, "readme.md")
 
 	m := &genmark.Markdown{}
-
-	fmt.Printf("M %v", m)
-
 	m.Shared.Spec = flags.Filename(swaggerFile)
-	// m.Output = flags.Filename(readmeFile)
 
 	m.Shared.WithFlatten = []string{"full"}
 	m.Output = flags.Filename(readmeFile)
@@ -26,7 +30,6 @@ func docs() error {
 	m.Shared.Target = flags.Filename(readmeFile)
 	m.Shared.TemplateDir = flags.Filename(filepath.Join(fnDir, "build/templates"))
 	m.Shared.AllowTemplateOverride = true
-	// swagger generate markdown -f /tmp/app/swagger.yaml --output=/tmp/app/readme.md -t /tmp/app/ --template-dir=templates/ --with-flatten=full
 
 	return m.Execute([]string{})
 }

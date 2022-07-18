@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/go-openapi/loads"
+	"github.com/go-openapi/loads/fmts"
 	gencmd "github.com/go-swagger/go-swagger/cmd/swagger/commands/generate"
 	"github.com/jessevdk/go-flags"
 )
@@ -15,14 +17,26 @@ import (
 //go:embed templ/templates/*
 var et embed.FS
 
+func init() {
+	loads.AddLoader(fmts.YAMLMatcher, fmts.YAMLDoc)
+}
+
 func generate() error {
 
-	err := writeTemplates()
+	var err error
+
+	fnDir, err = os.Getwd()
+	if err != nil {
+		log.Println(err)
+	}
+
+	log.Printf("using directory '%s'\n", fnDir)
+
+	err = writeTemplates()
 	if err != nil {
 		return err
 	}
 
-	// templateDir := filepath.Join(fnDir, "build/templates")
 	swaggerFile := filepath.Join(fnDir, "swagger.yaml")
 	targetDir := filepath.Join(fnDir, "build/app")
 
@@ -33,7 +47,7 @@ func generate() error {
 
 	gomod := []byte(`module app
 
-	go 1.18`)
+go 1.18`)
 
 	os.WriteFile(filepath.Join(targetDir, "go.mod"), gomod, 0644)
 
@@ -43,20 +57,64 @@ func generate() error {
 	m.Shared.ConfigFile = flags.Filename(filepath.Join(fnDir, "build/templates/server.yaml"))
 
 	m.Shared.TemplateDir = flags.Filename(filepath.Join(fnDir, "build/templates"))
-
 	m.Shared.AllowTemplateOverride = true
 
 	m.SkipModels = false
-	// m.SkipOperations = false
-
 	m.ServerPackage = "restapi"
-
 	m.Models.ModelPackage = "models"
 
 	err = m.Execute([]string{})
 	if err != nil {
 		return err
 	}
+
+	writeTests()
+
+	return nil
+}
+
+func writeTests() error {
+
+	swaggerFile := filepath.Join(fnDir, "swagger.yaml")
+
+	specDoc, err := loads.Spec(swaggerFile)
+	if err != nil {
+		return err
+	}
+
+	// get version
+	version := specDoc.Spec().Info.Version
+	title := specDoc.Spec().Info.Title
+
+	log.Printf("generting tests for %s version %s", title, version)
+
+	paths := specDoc.Spec().Paths
+	post := paths.Paths["/"].Post
+
+	// examples := post.Extensions["x-direktiv-examples"]
+	fn := post.Extensions["x-direktiv-function"]
+
+	// fmt.Printf("%v\n%v\n", examples, fn)
+
+	fmt.Printf("!!\n%v\n", fn)
+
+	// var fnYaml map[string]interface
+
+	// err = yaml.Unmarshal(yamlFile, &config)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// g, ok := fn.(map[string]interface{})
+	// if !ok {
+
+	// }
+
+	// fmt.Printf("!! %v\n", g)
+
+	// var fnYaml map[string]interface{}
+
+	// err = yaml.Unmarshal([]byte(fn), &fnYaml)
 
 	return nil
 }
