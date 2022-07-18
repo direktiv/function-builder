@@ -87,24 +87,33 @@ paths:
       # direktiv code generation is configured here
       x-direktiv-function: |-
         functions:
-          - id: APPNAME
-            image: gcr.io/direktiv/apps/APPNAME:1.0
-            type: knative-workflow
+        - id: APPNAME
+          image: gcr.io/direktiv/apps/APPNAME:1.0
+          type: knative-workflow
       x-direktiv-examples:
         # ADD MORE EXAMPLES HERE
         - title: Basic
           content: |-
-            - id: tf
-                 type: action
-                  action:
-                    function: APPNAME
-                    input: 
-                      files:
-                      - name: hello.txt
-                        data: Hello World
-                        mode: 0755
-                      commands:
-                      - command: Example of running APPNAME
+            - id: APPNAME
+              type: action
+              action:
+                function: APPNAME
+                input: 
+                  commands:
+                  - command: Example of running APPNAME
+        - title: Advanced
+          content: |-
+            - id: APPNAME
+              type: action
+              action:
+                function: APPNAME
+                input: 
+                  files:
+                  - name: hello.txt
+                    data: Hello World
+                    mode: 0755
+                  commands:
+                  - command: Example of running APPNAME
       x-direktiv:  
         cmds:
         - action: foreach

@@ -182,16 +182,16 @@ any
 {{- range .Operations }}
   {{- if eq .Name "Post" }}
   #### Function Configuration
-  ```yaml
-  {{ index .Extensions "x-direktiv-function" }}
-  ```
+```yaml
+{{ index .Extensions "x-direktiv-function" }}
+```
 
   {{- $examples := (index .Extensions "x-direktiv-examples") }}
   {{- range $examples }}
    #### {{ index . "title" }}
-   ```yaml
-   {{ index . "content"  }}
-   ```
+```yaml
+{{ index . "content"  }}
+```
   {{- end }}
   {{- end }}
 {{- end }}

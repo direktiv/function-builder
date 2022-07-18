@@ -8,10 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
+	direktivmodel "github.com/direktiv/direktiv/pkg/model"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/loads/fmts"
 	gencmd "github.com/go-swagger/go-swagger/cmd/swagger/commands/generate"
 	"github.com/jessevdk/go-flags"
+	"gopkg.in/yaml.v2"
 )
 
 //go:embed templ/templates/*
@@ -40,7 +42,7 @@ func generate() error {
 	swaggerFile := filepath.Join(fnDir, "swagger.yaml")
 	targetDir := filepath.Join(fnDir, "build/app")
 
-	err = os.MkdirAll(targetDir, 0777)
+	err = os.MkdirAll(targetDir, 0755)
 	if err != nil {
 		return err
 	}
@@ -68,7 +70,10 @@ go 1.18`)
 		return err
 	}
 
-	writeTests()
+	err = writeTests()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -86,35 +91,79 @@ func writeTests() error {
 	version := specDoc.Spec().Info.Version
 	title := specDoc.Spec().Info.Title
 
-	log.Printf("generting tests for %s version %s", title, version)
+	// create test dir for this version
+	testPath := filepath.Join(fnDir, "tests", version)
+	err = os.MkdirAll(testPath, 0755)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("generating tests for %s version %s", title, version)
 
 	paths := specDoc.Spec().Paths
 	post := paths.Paths["/"].Post
 
-	// examples := post.Extensions["x-direktiv-examples"]
 	fn := post.Extensions["x-direktiv-function"]
-
-	// fmt.Printf("%v\n%v\n", examples, fn)
-
-	fmt.Printf("!!\n%v\n", fn)
-
-	// var fnYaml map[string]interface
-
-	// err = yaml.Unmarshal(yamlFile, &config)
+	// wf, err := os.Create(filepath.Join(testPath, "examples.yaml"))
 	// if err != nil {
-	// 	panic(err)
+	// 	return err
 	// }
+	// defer wf.Close()
 
-	// g, ok := fn.(map[string]interface{})
-	// if !ok {
+	// in this section castging without check is ok
+	// they can not be of a different type
 
-	// }
+	// wf.Write([]byte(fn.(string)))
+	// wf.Write([]byte("\nstates:\n"))
 
-	// fmt.Printf("!! %v\n", g)
+	// create new workflow
+	var workflow direktivmodel.Workflow
 
-	// var fnYaml map[string]interface{}
+	// add function
+	var fd direktivmodel.ReusableFunctionDefinition
 
-	// err = yaml.Unmarshal([]byte(fn), &fnYaml)
+	// parts := strings.Split(fn.(string), "- ")
+	fnString := strings.Replace(fn.(string), "- ", "  ", 1)
+	fnString = strings.Replace(fnString, "functions:", "", 1)
+
+	err = yaml.Unmarshal([]byte(fnString), &fd)
+	if err != nil {
+		return err
+	}
+
+	// fmt.Printf("%v\n%v%v\n", fd, fn, parts[1])
+
+	workflow.Functions = make([]direktivmodel.FunctionDefinition, 0)
+	workflow.Functions = append(workflow.Functions, &fd)
+
+	// add states for each example
+
+	examples := post.Extensions["x-direktiv-examples"].([]interface{})
+
+	// init state
+	workflow.States = make([]direktivmodel.State, 0)
+
+	for a := range examples {
+		ex := examples[a].(map[string]interface{})
+
+		// need to remove the list '-'
+		state := strings.Replace(ex["content"].(string), "- ", "  ", 1)
+
+		var action direktivmodel.ActionState
+		yaml.Unmarshal([]byte(state), &action)
+
+		// assign new ids and linkj them up
+		action.ID = fmt.Sprintf("state%d", a)
+		if a+1 != len(examples) {
+			action.Transition = fmt.Sprintf("state%d", a+1)
+		}
+
+		workflow.States = append(workflow.States, &action)
+	}
+
+	out, err := yaml.Marshal(workflow)
+
+	fmt.Printf(">> %v\n", string(out))
 
 	return nil
 }
@@ -129,7 +178,7 @@ func writeTemplates() error {
 		return err
 	}
 
-	err = os.MkdirAll(templateDir, 0777)
+	err = os.MkdirAll(templateDir, 0755)
 	if err != nil {
 		return err
 	}
@@ -184,13 +233,9 @@ func writeFile(src, target string) error {
 
 func writeDirFiles(dir string) error {
 
-	// fullDir := dir
-
-	fmt.Printf("DIRECTORY1 %v\n", dir)
-
 	// create target directory
 	targetDir := strings.Replace(dir, "templ", fmt.Sprintf("%s/build", fnDir), 1)
-	err := os.MkdirAll(targetDir, 0777)
+	err := os.MkdirAll(targetDir, 0755)
 	if err != nil {
 		fmt.Printf("ERR %v\n", err)
 		return err
@@ -204,9 +249,6 @@ func writeDirFiles(dir string) error {
 	for i := range e {
 
 		file := e[i]
-
-		fmt.Printf("NAME %v\n", file.Name())
-
 		if file.IsDir() {
 
 			err = writeDirFiles(filepath.Join(dir, file.Name()))
@@ -216,12 +258,10 @@ func writeDirFiles(dir string) error {
 
 		} else {
 
-			fmt.Printf("FROM %v TO %v\n", filepath.Join(dir, file.Name()), filepath.Join(targetDir, file.Name()))
-
 			err := writeFile(filepath.Join(dir, file.Name()),
 				filepath.Join(targetDir, file.Name()))
 			if err != nil {
-				fmt.Printf("!!!!!!!!!!!!!!!!1 ERR %v\n", err)
+				return err
 			}
 
 		}
