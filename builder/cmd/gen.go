@@ -92,7 +92,8 @@ func writeTests() error {
 	title := specDoc.Spec().Info.Title
 
 	// create test dir for this version
-	testPath := filepath.Join(fnDir, "tests", version)
+	testPath := filepath.Join(fnDir, "tests",
+		fmt.Sprintf("version-%s", version))
 	err = os.MkdirAll(testPath, 0755)
 	if err != nil {
 		return err
@@ -104,17 +105,6 @@ func writeTests() error {
 	post := paths.Paths["/"].Post
 
 	fn := post.Extensions["x-direktiv-function"]
-	// wf, err := os.Create(filepath.Join(testPath, "examples.yaml"))
-	// if err != nil {
-	// 	return err
-	// }
-	// defer wf.Close()
-
-	// in this section castging without check is ok
-	// they can not be of a different type
-
-	// wf.Write([]byte(fn.(string)))
-	// wf.Write([]byte("\nstates:\n"))
 
 	// create new workflow
 	var workflow direktivmodel.Workflow
@@ -122,22 +112,19 @@ func writeTests() error {
 	// add function
 	var fd direktivmodel.ReusableFunctionDefinition
 
-	// parts := strings.Split(fn.(string), "- ")
+	// good enough to remove the stuf we don't need
 	fnString := strings.Replace(fn.(string), "- ", "  ", 1)
 	fnString = strings.Replace(fnString, "functions:", "", 1)
-
 	err = yaml.Unmarshal([]byte(fnString), &fd)
 	if err != nil {
 		return err
 	}
 
-	// fmt.Printf("%v\n%v%v\n", fd, fn, parts[1])
-
-	workflow.Functions = make([]direktivmodel.FunctionDefinition, 0)
-	workflow.Functions = append(workflow.Functions, &fd)
+	workflow.Functions = []direktivmodel.FunctionDefinition{
+		&fd,
+	}
 
 	// add states for each example
-
 	examples := post.Extensions["x-direktiv-examples"].([]interface{})
 
 	// init state
@@ -152,7 +139,7 @@ func writeTests() error {
 		var action direktivmodel.ActionState
 		yaml.Unmarshal([]byte(state), &action)
 
-		// assign new ids and linkj them up
+		// assign new ids and link them up
 		action.ID = fmt.Sprintf("state%d", a)
 		if a+1 != len(examples) {
 			action.Transition = fmt.Sprintf("state%d", a+1)
@@ -161,11 +148,59 @@ func writeTests() error {
 		workflow.States = append(workflow.States, &action)
 	}
 
-	out, err := yaml.Marshal(workflow)
+	err = writeEventTest(workflow, testPath, version, title)
+	if err != nil {
+		return err
+	}
 
-	fmt.Printf(">> %v\n", string(out))
+	return writeTestFile(filepath.Join(testPath, "tests.yaml"), workflow)
 
-	return nil
+}
+
+func writeEventTest(workflow direktivmodel.Workflow, testPath, version,
+	title string) error {
+
+	start := &direktivmodel.EventStart{
+		Event: &direktivmodel.StartEventDefinition{
+			// Type: "io.direktiv.function.test",
+			Type: "io.direktiv.function.test",
+			Context: map[string]interface{}{
+				"function": title,
+				"version":  version,
+			},
+		},
+	}
+	start.Type = direktivmodel.StartTypeEvent
+
+	workflow.Start = start
+
+	fmt.Println(start)
+
+	return writeTestFile(filepath.Join(testPath, "tests-event.yaml"), workflow)
+
+	// Type    string                 `yaml:"type"`
+	// Context map[string]interface{} `yaml:"context,omitempty"`
+
+	// return nil
+
+}
+
+func writeTestFile(file string, data interface{}) error {
+
+	out, err := yaml.Marshal(data)
+	if err != nil {
+		return err
+	}
+
+	wf, err := os.Create(file)
+	if err != nil {
+		return err
+	}
+	defer wf.Close()
+
+	_, err = wf.Write(out)
+	return err
+
 }
 
 func writeTemplates() error {

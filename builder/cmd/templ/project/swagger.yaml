@@ -111,9 +111,12 @@ paths:
                   files:
                   - name: hello.txt
                     data: Hello World
-                    mode: 0755
+                    mode: '0755'
                   commands:
                   - command: Example of running APPNAME
+      x-direktiv-secrets:
+        - name: hello
+          descrition: this is a secrets!!!!! hello!!!!
       x-direktiv:  
         cmds:
         - action: foreach
