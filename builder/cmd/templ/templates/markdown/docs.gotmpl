@@ -187,14 +187,32 @@ any
 ```
 
   {{- $examples := (index .Extensions "x-direktiv-examples") }}
+  {{- $secrets := (index .Extensions "x-direktiv-secrets") }}
+
   {{- range $examples }}
    #### {{ index . "title" }}
 ```yaml
 {{ index . "content"  }}
 ```
   {{- end }}
+
+   ### Secrets
+
+{{if not $secrets}}
+*No secrets required*
+{{end}}
+
+{{- range $secrets }}
+- **{{ index . "name" }}**: {{ index . "description" }}
+{{- end }}
+
   {{- end }}
 {{- end }}
+
+
+
+
+
 
 ### Request
 

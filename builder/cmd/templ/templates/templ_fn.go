@@ -152,7 +152,7 @@ type ctxInfo struct {
 func PostDirektivHandle(params PostParams) middleware.Responder {
 
 	{{- if $printDebug }}
-	fmt.Printf("params in: %+v", params)
+	fmt.Printf("params in: %+v\n", params)
 	{{- end }}
 
 	{{- if .SuccessResponse.Schema }}
@@ -198,11 +198,13 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	{{- range $i,$e := $commands }}
 
 	ret, err = runCommand{{ $i }}(ctx, accParams, ri)
+
 	responses = append(responses, ret)
 
 	// if foreach returns an error there is no continue
 	{{- if ne (index $e "action") "foreach" }}
-	cont = convertTemplateToBool("{{ .Continue }}", accParams, true)
+	cont = convertTemplateToBool("{{ index . "continue" }}", accParams, true)
+	// cont = convertTemplateToBool("{{ .Continue }}", accParams, true)
 	{{- else }}
 	cont = false
 	{{- end }}
@@ -304,10 +306,8 @@ func runCommand{{ $i }}(ctx context.Context,
 	ir := make(map[string]interface{})
 	ir[successKey] = false
 
-	ri.Logger().Infof("executing command")
-
 	at := accParamsTemplate{
-		params.Body,
+		*params.Body,
 		params.Commands,
 		params.DirektivDir,
 	}
@@ -318,6 +318,7 @@ func runCommand{{ $i }}(ctx context.Context,
 
 	cmd, err := templateString(`{{ .exec }}`, at)
 	if err != nil {
+		ri.Logger().Infof("error executing command: %v", err)
 		ir[resultKey] = err.Error()
 		return ir, err
 	}
@@ -366,9 +367,11 @@ type LoopStruct{{ $i }} struct {
 func runCommand{{ $i }}(ctx context.Context, 
 		params accParams, ri *apps.RequestInfo) ([]map[string]interface{}, error) {
 
-	ri.Logger().Infof("foreach command over {{ .loop }}")
-
 	var cmds []map[string]interface{}
+
+	if params.Body == nil {
+		return cmds, nil
+	}
 
 	for a := range params.Body{{ .loop }} {
 
@@ -511,7 +514,7 @@ func runCommand{{ $i }}(ctx context.Context,
 	ri.Logger().Infof("running http request")
 
 	at := accParamsTemplate{
-		params.Body,
+		*params.Body,
 		params.Commands,
 		params.DirektivDir,
 	}

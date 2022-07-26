@@ -19,6 +19,5 @@ RUN apt-get update && apt-get install ca-certificates -y
 COPY --from=build /application /bin/application
 
 EXPOSE 8080
-EXPOSE 9292
 
 CMD ["/bin/application", "--port=8080", "--host=0.0.0.0", "--write-timeout=0"]

@@ -55,8 +55,6 @@ paths:
           in: body
           schema:
             type: object
-            required:
-              - name
             properties:
               files:
                 type: array
@@ -115,8 +113,8 @@ paths:
                   commands:
                   - command: Example of running APPNAME
       x-direktiv-secrets:
-        - name: hello
-          descrition: this is a secrets!!!!! hello!!!!
+        - name: APPNAMESecret
+          description: This is a secret value
       x-direktiv:  
         cmds:
         - action: foreach

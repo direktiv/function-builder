@@ -302,37 +302,8 @@ func (s *Server) hasScheme(scheme string) bool {
 }
 
 
-type UploadHandler struct {
-}
-
-func (uh *UploadHandler) ServeHTTP(wr http.ResponseWriter, r *http.Request) {
-	log.Println("handle upload")
-
-	err := extract.Gz(context.Background(), r.Body, "/tmp", nil)
-	if err != nil {
-		log.Fatalf("can not untar upload: %v", err)
-	}
-}
-
-// func uploadServer() {
-
-// 	t := os.Getenv("DIREKTIV_TEST")
-
-// 	if len(t) > 0 {
-// 		log.Println("starting test upload server")
-// 		s := &http.Server{
-// 			Addr:           ":9292",
-// 			Handler:        &UploadHandler{},
-// 		}
-// 		log.Fatal(s.ListenAndServe())
-// 	}
-
-// }
-
 // Serve the api
 func (s *Server) Serve() (err error) {
-
-	// go uploadServer()
 
 	if !s.hasListeners {
 		if err = s.Listen(); err != nil {
