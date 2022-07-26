@@ -21,7 +21,7 @@ Creating a new app takes three steps: configuring the input, the command, and ou
 
 ## Quickstart
 
-The initial `init` and `gen` steps are already creating a working demo service. To quickly test how that service builder works run the following commands in an empty folder:
+The initial `prepare` and `gen` steps are already creating a working demo service. To test the service builder functionality download the service builder from the Github release page and run the following commands:
 
 ```
 # creates dockerfile, run.sh, swagger.yaml, go.mod

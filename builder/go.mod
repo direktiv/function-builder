@@ -8,6 +8,7 @@ require (
 	github.com/go-swagger/go-swagger v0.29.0
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/spf13/cobra v1.5.0
+	gopkg.in/yaml.v2 v2.4.0
 )
 
 require (
@@ -70,6 +71,5 @@ require (
 	google.golang.org/grpc v1.43.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/ini.v1 v1.66.3 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
