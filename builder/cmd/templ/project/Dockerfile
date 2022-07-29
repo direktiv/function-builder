@@ -11,7 +11,7 @@ RUN cd src && \
     export CGO_LDFLAGS="-static -w -s" && \
     go build -tags osusergo,netgo -o /application cmd/APPNAME-server/main.go; 
 
-FROM ubuntu:21.04
+FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install ca-certificates -y
 

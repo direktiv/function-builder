@@ -130,10 +130,15 @@ type accParams struct {
 	DirektivDir string
 }
 
+
+{{- $paramIsInterface := false }}
+
+
 type accParamsTemplate struct {
 	{{- range $i,$e := .Params }}
 	{{- if eq $e.Name "body" }}
 	{{- if eq $e.Schema.GoType "interface{}"}}
+	{{- $paramIsInterface = true }}
 	In {{ $e.Schema.GoType }}
 	{{- else }}
 	{{ $e.Schema.GoType }}
@@ -307,7 +312,11 @@ func runCommand{{ $i }}(ctx context.Context,
 	ir[successKey] = false
 
 	at := accParamsTemplate{
+		{{- if $paramIsInterface }}
+		params.Body,
+		{{- else }}
 		*params.Body,
+		{{- end }}
 		params.Commands,
 		params.DirektivDir,
 	}
@@ -514,7 +523,11 @@ func runCommand{{ $i }}(ctx context.Context,
 	ri.Logger().Infof("running http request")
 
 	at := accParamsTemplate{
+		{{- if $paramIsInterface }}
+		params.Body,
+		{{- else }}
 		*params.Body,
+		{{- end }}
 		params.Commands,
 		params.DirektivDir,
 	}

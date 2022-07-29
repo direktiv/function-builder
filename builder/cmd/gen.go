@@ -235,7 +235,7 @@ Scenario: get request
 	"""
 	When method POST
 	Then status 200
-		And match $ ==
+	And match $ ==
 	"""
 	{
 	"APPNAME": [

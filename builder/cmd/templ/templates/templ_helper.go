@@ -148,7 +148,10 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 	cmd.Stdout = mwStdout
 	cmd.Stderr = mwStdErr
 	cmd.Dir = ri.Dir()
-	cmd.Env = append(os.Environ(), envs...)
+
+	// change HOME
+	curEnvs := append(os.Environ(), fmt.Sprintf("HOME=%s", ri.Dir()))
+	cmd.Env = append(curEnvs, envs...)
 
 	if print {
 		ri.Logger().Infof("running command %v", cmd)
