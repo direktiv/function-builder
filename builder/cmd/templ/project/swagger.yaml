@@ -61,6 +61,7 @@ paths:
                 items:
                   $ref: '#/definitions/direktivFile'
                 description: File to create before running commands.
+                default: []
               commands:
                 type: array
                 description: Array of commands.
@@ -70,7 +71,6 @@ paths:
                     command:
                       type: string
                       description: Command to run
-                      # ADD EXAMPLE HERE
                     silent: 
                       type: boolean
                       description: If set to false the command will not print output to logs.
@@ -82,6 +82,8 @@ paths:
                     continue: 
                       type: boolean
                       description: Stops excecution if command fails, otherwise proceeds with next command 
+                default: 
+                - command: echo Hello
       # direktiv code generation is configured here
       x-direktiv-function: |-
         functions:

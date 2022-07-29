@@ -1,15 +1,19 @@
 FROM golang:1.18.2-alpine as build
 
-COPY build/app/go.mod src/go.mod
-COPY build/app/cmd src/cmd/
-COPY build/app/models src/models/
-COPY build/app/restapi src/restapi/
+WORKDIR /src
 
-RUN cd src/ && go mod tidy
+COPY build/app/go.mod go.mod
+COPY build/app/go.sum go.sum
 
-RUN cd src && \
-    export CGO_LDFLAGS="-static -w -s" && \
-    go build -tags osusergo,netgo -o /application cmd/APPNAME-server/main.go; 
+RUN go mod download
+
+COPY build/app/cmd cmd/
+COPY build/app/models models/
+COPY build/app/restapi restapi/
+
+ENV CGO_LDFLAGS "-static -w -s"
+
+RUN go build -tags osusergo,netgo -o /application cmd/kubectl-server/main.go; 
 
 FROM ubuntu:22.04
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"embed"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -21,6 +22,12 @@ var et embed.FS
 
 //go:embed templ/workflows/*
 var wfTempl embed.FS
+
+//go:embed mod/gomod
+var gomod string
+
+//go:embed mod/gosum
+var gosum string
 
 var karateImage = "gcr.io/direktiv/apps/karate:1.0"
 
@@ -52,11 +59,10 @@ func generate() error {
 		return err
 	}
 
-	gomod := []byte(`module app
-
-go 1.18`)
-
-	os.WriteFile(filepath.Join(targetDir, "go.mod"), gomod, 0644)
+	if _, err := os.Stat(filepath.Join(targetDir, "go.mod")); errors.Is(err, os.ErrNotExist) {
+		os.WriteFile(filepath.Join(targetDir, "go.mod"), []byte(gomod), 0644)
+		os.WriteFile(filepath.Join(targetDir, "go.sum"), []byte(gosum), 0644)
+	}
 
 	m := &gencmd.Server{}
 	m.Shared.Spec = flags.Filename(swaggerFile)

@@ -1,4 +1,4 @@
- # Direktiv Service Builder
+ # Direktiv Function Builder
 
 Creating a new app takes three steps: configuring the input, the command, and output. This documentation will go through these three stages in detail, as well as all configuration choices. As a good developer, you may believe it's easier to just skip the documentation and go straight to the [examples](examples/README.md) as soon as possible :wink: or look at the [direktiv-apps repository](https://github.com/direktiv-apps). 
 
@@ -13,117 +13,124 @@ Creating a new app takes three steps: configuring the input, the command, and ou
 - [Configuring the Output](#configuring-the-output)
 - [Compiling and Running the Service](#compiling-and-running-the-service)
 - [Advanced Features](#advanced-features) 
-    - [Delete Method](#delete-method) 
+    - [Delete Method](#delete-method) The swaggger UI is available 
     - [Chaining Commands](#chaining-commands) 
     - [Direktiv File](#direktiv-file) 
-- [Custom Go Code](#custom-go-code)
+- [Secrets](#secrets) 
 - [Generate Documentation](#generate-documentation)
+- [Testing](#testing)
 
 ## Quickstart
 
-The initial `prepare` and `gen` steps are already creating a working demo service. To test the service builder functionality download the service builder from the Github release page and run the following commands:
+The first step to create a function with the function builder is to download the latest release from the [release page](https://github.com/direktiv/function-builder/releases). It is available for Linux, Windows and Mac. 
 
+The second step is to create an empty directory or cloning an empty Git project. All the function builder commands have to be executed in this directory. There are basically only three commands to build a function.
+
+The first one is only called once to prepare the project folder. It creates the required files to generate a function later. The most important files are the `Dockerfile` and the `swagger.yaml`.
+
+*Preparing a function*
 ```
-# creates dockerfile, run.sh, swagger.yaml, go.mod
-docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder init myservice
-
-# generates the source code
-docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder gen
-
-# compiles the source code and builds container
-./run.sh
+function-builder prepare -f my-function
 ```
 
-This will init, compile, build and start the service. It is accessible on [127.0.0.1:8080](127.0.0.1:8080):
+The whole process of building a function with this tool is to change the `swagger.yaml` file and run the second command which generates the source code based on the information in the `swagger.yaml` file. The default template will create a working example function.
 
+*Generating function source code*
 ```
-curl -X POST -H "Direktiv-ActionID: development" -H "Content-Type: application/json"  http://127.0.0.1:8080 -d '{ "name": "myname" }'
+function-builder gen
+```
+
+After these two steps the `run.sh` script can build the function and serve it for local testing. The function is available at [http://localhost:9191](http://localhost:9191) and the swagger UI at [http://localhost:9191/docs](http://localhost:9191/docs). The function can be tested via `curl` as well.
+
+*Curl the function*
+```
+curl -X POST -H "Direktiv-ActionID: development" http://localhost:9191/
+```
+
+This request should return something like `{"my-function":null}`. The default template takes a list of commands as parameter and because no command was provided it return `null`. If a command is provided it returns the output of that command.
+
+*Curl the functio with command*
+```
+curl -X POST -H "Direktiv-ActionID: development" \
+  -H "Content-Type: application/json" \
+  -d '{ "commands": [ { "command": "echo Hello" } ] }' http://localhost:9191/
 ```
 
 ## Initializing the Service
 
-The first step starting with a new service is initializing the project. Direktiv's service builder comes with a docker container so no local installation is required. To initialise a project simply call the following command:
-
-```
-docker run -v `pwd`:/tmp/app direktiv/service-builder init myservice
-```
-
-> **TIP**: On Linux the owner of the created files is `root`. To avoid this pass in a user and group.
-
-*Passing user and group id to the container*
-
-```
-docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder init myservice
-```
-
-The container maps a local directory to the container and uses it as the base. In the above example, we used the Linux `pwd` command, but this can also be a static file path. The service name is the last argument. In the designated target folder, after running the container, will be four files:
+After running the prepare step with `function-builder prepare -f my-function` there are multiple files in the function directory. This step can only be called once at the start of building the function. This section lists the create files and what how to use them. 
 
 **1. Dockerfile**
 
 A multi-stage build is used in the default Dockerfile. The generated application is built in the first stage. The second stage may be customized to meet the requirements of the service, for example through adding additional files to the base image or change the base image via the `FROM` directive. The last three lines should not be altered.
 
 ```Dockerfile
-FROM golang:1.18-buster as build
+FROM golang:1.18.2-alpine as build
 
-COPY go.mod src/go.mod
-COPY go.sum src/go.sum
-RUN cd src/ && go mod download
+WORKDIR /src
 
-COPY cmd src/cmd/
-COPY models src/models/
-COPY restapi src/restapi/
+COPY build/app/go.mod go.mod
+COPY build/app/go.sum go.sum
 
-RUN cd src && \
-    export CGO_LDFLAGS="-static -w -s" && \
-    go build -tags osusergo,netgo -o /application cmd/myservice-server/main.go; 
+RUN go mod download
 
-FROM ubuntu:21.04
+COPY build/app/cmd cmd/
+COPY build/app/models models/
+COPY build/app/restapi restapi/
+
+ENV CGO_LDFLAGS "-static -w -s"
+
+RUN go build -tags osusergo,netgo -o /application cmd/kubectl-server/main.go; 
+
+FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install ca-certificates -y
 
-# DONT CHANGE AFTER THIS 
+# DON'T CHANGE BELOW 
 COPY --from=build /application /bin/application
 
 EXPOSE 8080
 
-CMD ["/bin/application", "--port=8080", "--host=0.0.0.0"]
+CMD ["/bin/application", "--port=8080", "--host=0.0.0.0", "--write-timeout=0"]
 ```
 
 **2. swagger.yaml**
 
-This file is the configuration file for the service and the configuration options will be explained in this documentation. An example can be seen [here](examples/bash/v1.0.0/swagger.yaml).
+This file is the configuration file for the function and the configuration options will be explained in this documentation. An example can be seen [here](examples/bash/v1.0.0/swagger.yaml).
 
 **3. run.sh**
 
-This helper script builds the service and container and starts it. This script can be used for faster development and testing. Can be used after the service has been compiled the first time. 
+This helper script builds the function and container and starts it. This script can be used for faster development and testing. Can be used after the function has been compiled the first time. It starts it at http://localhost:9191
 
-**4. go.mod**
+**4. LICENSE**
 
-Manages the go dependencies. Should not be altered. 
+Default Apache 2.0 license for the function.
+
+**5. .gitignore**
+
+Default .gitignore file with entries for the template directory and `.direktiv.yaml`.
 
 ## Configuring the Input
 
-The input values required for a new service must be planned. Although the service builder may be set to accept all JSON data, using an input configuration prevents the service from malfunctioning and delivering incorrect results.
+The input values required for a new function must be planned. Although the function builder may be set to accept all JSON data, using an input configuration prevents the function from malfunctioning and delivering incorrect results.
 
-In the `swagger.yaml` file generated at the beginning, the default input configuration begins at `paths:`. This part of the document follows the [swagger specification](https://swagger.io/docs/specification/describing-parameters/) exactly, and it contains no Direktiv-specific extensions. Nevertheless Direktiv only uses the base path `/` with POST for services so only the body section is important here and changes should be made here only. For example the default `swagger.yaml` has on mandatory `name` parameter of type `string` configured in the body.
+In the `swagger.yaml` file generated at the beginning, the default input configuration begins at `paths:`. This part of the document follows the [swagger specification](https://swagger.io/docs/specification/describing-parameters/) exactly, and it contains no Direktiv-specific extensions. Nevertheless Direktiv only uses the base path `/` with POST for function so only the body section is important here and changes should be made here only. For example the default `swagger.yaml` has on mandatory `commands` parameter of type `array` configured in the body. This can be changed to whatever is required for the function.
 
 ```yaml
 ...
-- name: body
-  in: body
-  schema:
+commands:
+  type: array
+  description: Array of commands.
+  items:
     type: object
-    required:
-      - name
     properties:
-      name:
+      command:
         type: string
-        example: YourName
-        description: The full name for the greeting
+        description: Command to run
 ...
 ```
 
-If the service requires e.g. a list of integers it could be changed to the following which make the a list of integers optional.
+If the function requires e.g. a list of integers it could be changed to the following which make the a list of integers mandatory.
 
 ```yaml
 ...
@@ -133,12 +140,8 @@ If the service requires e.g. a list of integers it could be changed to the follo
     type: object
     additionalProperties: false
     required:
-      - name
+      - values
     properties:
-      name:
-        type: string
-        example: YourName
-        description: The full name for the greeting
       values: 
         type: array
         items: 
@@ -146,7 +149,7 @@ If the service requires e.g. a list of integers it could be changed to the follo
 ...
 ```
 
-With this configuration additional properties sent to the service from Direktiv will be ignored and can not be used in templating later in the command section. This behaviour can be changed with the attribute `additionalProperties`. If set to `true` the data will be available. Alternatively the input can be unspecified without any checks. This would accept every JSON payload from Direktiv.
+With this configuration additional properties sent to the function from Direktiv will be ignored and can not be used in templating later in the command section. This behaviour can be changed with the attribute `additionalProperties`. If set to `true` the data will be available. Alternatively the input can be unspecified without any checks. This would accept every JSON payload from Direktiv.
 
 > **TIP**: If the `additionalProperties` approach is used the variables of the incoming request can not be access directly e.g. `{{ .Name }}` but in an wrapper variable `In` because the data becomes a map. It has to be access with `{{ index .In "name" }}`.
 
@@ -158,7 +161,7 @@ With this configuration additional properties sent to the service from Direktiv 
     additionalProperties: {}
 ```
 
-To make a logical link between this input configuration and the Direktiv service, the following three examples provide an input definition for a service and how it converts to a Direktiv workflow. The last example demonstrates how this looks as a request made by Direktiv to the service.
+To make a logical link between this input configuration and the Direktiv function, the following three examples provide an input definition for a function and how it converts to a Direktiv workflow. The last example demonstrates how this looks as a request made by Direktiv to the function.
 
 *1. Input Definition*
 ```yaml
@@ -180,7 +183,7 @@ To make a logical link between this input configuration and the Direktiv service
 - id: run
   type: action
   action:
-    function: myservice
+    function: myfunc
     input:
       name: Diana
       values:
@@ -189,14 +192,14 @@ To make a logical link between this input configuration and the Direktiv service
       - 300
 ```
 
-*3. Service Payload*
+*3. Function Payload*
 ```json
 {
-  "name": "jens",
+  "name": "Diana",
 	"values": [
-		1,
-		2,
-		3
+		100,
+		200,
+		300
 	]
 }
 ```
@@ -215,7 +218,7 @@ x-direktiv:
     exec: echo 'World'
 ```
 
-*Example Service Response*
+*Example Function Response*
 ```json
 [
 	{
@@ -243,7 +246,7 @@ The nature of the template engine requires the attributes to be upper-case. If t
     exec: echo Hello
 ```
 
-The Service Builder supports all go templating commands plus the extension library [sprig](http://masterminds.github.io/sprig/). That means within the fields even `if` or `range` statements can be executed (The `-` in `{{- }}` avoids new lines). 
+The function builder supports all go templating commands plus the extension library [sprig](http://masterminds.github.io/sprig/). That means within the fields even `if` or `range` statements can be executed (The `-` in `{{- }}` avoids new lines). 
 
 **Example 'if' Statement**
 ```yaml
@@ -251,7 +254,7 @@ x-direktiv:
   cmds:
   - action: exec
     exec: |- 
-      echo {{- if eq (deref .Name) "Mike" }} Go away Mike{{- else }} Hello {{ .Name }}{{- end }}
+      echo {{- if eq (deref .Name) "Mike" }} Go away Mike {{- else }} Hello {{ .Name }}{{- end }}
 ```
 
 > **Note:** For string or integer comparison the values need to be dereferenced with `deref`. The `debug` can provide more details if there are any problems with templating.
@@ -264,7 +267,7 @@ x-direktiv:
     exec: echo  Hello {{- range $i,$n := .Names }} {{ $n }} {{- end }}
 ```
 
-By default these commands are getting returned as array of commands. There is an additional `output` field which will be used as service response if it is configured. This is usefule if multiple commands or scripts need to run but the response should not show all the executed commands. This seciton has to be configured as JSON response but templating can be used here as well. 
+By default these commands are getting returned as array of commands. There is an additional `output` field which will be used as function response if it is configured. This is useful if multiple commands or scripts need to run but the response should supress some executed commands. This section has to be configured as JSON response but templating can be used here as well. 
 
 **Example Output**
 ```yaml
@@ -278,7 +281,7 @@ x-direktiv:
     }
 ```
 
-The `output` instruction has access to all executed commands. As seen before all results are in array. The previous exmplae accesses the first command result with `(index . 0)`. The command result is a map with the values `result` and `success` so to fetch the result it uses `index` again. In case the result is JSON and not text the templating can access indivdiual values/attributes from the JSON. As with the other fields `if` statements and other template instructions can be used as well.
+The `output` instruction has access to all executed commands. As seen before all results are in array. The previous example accesses the first command result with `(index . 0)`. The command result is a map with the values `result` and `success`. To fetch the result it uses `index` again. In case the result is JSON and not text the templating can access indivdiual values/attributes from the JSON. As with the other fields `if` statements and other template instructions can be used as well.
 
 ```yaml
 x-direktiv:  
@@ -325,7 +328,7 @@ This field reads the nominated file and uses this as reposnse for the command. T
 
 ### continue
 
-This field controls the behaviour in case of an error. The default behaviour is to throw an error if the execution fails. If continue is set to `true` the execution is marked as failed but the service continues with either executing the next command or returning if it is the last or only one.  
+This field controls the behaviour in case of an error. The default behaviour is to throw an error if the execution fails. If continue is set to `true` the execution is marked as failed but the service continues with either executing the next command or returning if it is the last or the only one.  
 
 ### print
 
@@ -341,7 +344,7 @@ This defines the environment variables for the command. Templating can be used f
 
 ### runtime-envs
 
-If runtime environment variables are required, meaning the client sends environment variables to the service, the `runtime-envs` attribute can be used to add them to the static list in `env`. Ths attibute contains a template which has to return a JSON array of strings in `KEY=VALUE` format. The folowing example is taken from the terraform service. 
+If runtime environment variables are required, meaning the client sends environment variables to the service, the `runtime-envs` attribute can be used to add them to the static list in `env`. This attibute contains a template which has to return a JSON array of strings in `KEY=VALUE` format. The folowing example is taken from the terraform service. 
 
 ```yaml
 runtime-envs: |
@@ -488,7 +491,7 @@ HTTP Foreach uses the same attributes as the single HTTP request. It needs a `lo
 
 ## Configuring the Output
 
-The default behaviour of Direktiv Servbice Build is to return all JSON data generated by the commands. Sometimes it is required to guarantee a certain response. 
+The default behaviour of functions is to return all JSON data generated by the commands. Sometimes it is required to guarantee a certain response. 
 
 **Default Response**
 ```yaml
@@ -496,10 +499,8 @@ responses:
   200:
     schema:
       type: object
-      additionalProperties: {}
+      additionalProperties: 
 ```
-
-The above example accepts all JSON properties. If it is required to validate the output it can be modified the same way as the [input](#configuring-the-input). The following example shows a response which requires `my-return-value` as return value. Because it is required the service would fail if that value does not exist. If the `required` is removed, the service would return an empty JSON object if the value does not exist. 
 
 **Validate Response**
 ```yaml
@@ -514,29 +515,26 @@ responses:
           type: string
 ```
 
-## Compiling and Running the Service
+## Compiling and runnig the function
 
-After every change in the `swagger.yaml` file configuration the service needs to be generated. This can be done with a simple command and the command must be run where the `init` command was executed. 
+After every change in the `swagger.yaml` file configuration the function needs to be generated. This can be done with a simple command and the command must be run where the `prepare` command was executed. 
 
 ```
-docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder gen
+function-builder gen
 ```
 
-The `init` phase created a convenience file `run.sh` which can be used to run and test the service. It compiles the service and starts a container exposing port `8080`. After starting it the service can be used with a simple `curl` or via the auto-generated docs/ui at [http://127.0.0.1:8080/docs](http://127.0.0.1:8080/docs). 
+The `prepare` phase created a convenience file `run.sh` which can be used to run and test the function. It compiles the function and starts a container exposing port `9191`. After starting it the function can be used with a simple `curl` or via the auto-generated docs/ui at [http://127.0.0.1:9191/docs](http://127.0.0.1:9191/docs). 
 
 **Runnning curl**
 ```
-curl -X POST -H "Direktiv-ActionID: development" -H "Content-Type: application/json"  http://127.0.0.1:8080 -d '{ "name": "myname" }'
+curl -X POST -H "Direktiv-ActionID: development" -H "Content-Type: application/json"  http://127.0.0.1:9191 -d '{ "name": "myname" }'
 ```
-
-DIREKTIV
-
 
 ## Advanced Features 
 
 ### Delete Method
 
-If a service is getting cancelled in Direktiv it sends a DELETE request with the action ID to the cancelled service. The Direktiv Service Builder will stop the executying command if that happens. If there is a requirement to run additional commands after it can be configured in `swagger.yaml`. The `Direktiv-ActionID` header contains the action id of the instance.
+If a service is getting cancelled in Direktiv it sends a DELETE request with the action ID to the cancelled service. The Direktiv Service Builder will stop the executing command if that happens. If there is a requirement to run additional commands after it can be configured in `swagger.yaml`. The `Direktiv-ActionID` header contains the action id of the instance.
 
 
 **Delete Configuration**
@@ -569,22 +567,16 @@ cmds:
   exec: echo 'The greeting was {{ index (index .Commands 0) "result" }}'
 ```
 
-## Custom Go Code
+## Secrets
 
-In cases where something very specific needs to be build the Service Builder can generate go skeleton code. The service needs to run the `init` command as well but the generate command is slightly different and `gen-custom` is used instead of `gen`.
+To define required secrest in the function there is an additional section in the `swagger.yaml` file called `x-direktiv-secrets`. This section is not required but is important for [testing](#testing) and documentation. It is a simple list of the secrets and its description.
 
+```yaml
+x-direktiv-secrets:
+  - name: myPassword
+    description: Password to open the chest
 ```
-docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder gen-custom
-```
 
-This generates all files similar to the code generation except two files:
-
-- restapi/operations/direktiv-post.go
-- restapi/operations/direktiv-delete.go
-
-They will not be overwritten and the implementation of the service need to be implemented in those files. The `direktiv-post.go` includes two functions. `PostDirektivHandle` is the actual implementation of the service whereas `HandleShutdown` is a function called before the Direktiv service gets scheduled out by Knative. 
-
-The other file uses the function `DeleteDirektivHandle` to handle cancel requests from Direktiv. This function does not need to be implemented. Only if there is a requirement to handle cancel commands.
 
 ## Generate Documentation
 
@@ -594,7 +586,7 @@ There are new Direktiv specific attributes to improve the auto-generated documen
 
 #### x-direktiv-function
 
-This attribute can be used to provide a copy-and-paste example of the function to use in Direktiv workflows.
+This attribute can be used to provide a copy-and-paste example of the function to use in Direktiv workflows. It will be used to generate tests as well.
 
 ```yaml
 ...
@@ -610,6 +602,8 @@ paths:
 ...
 ```
 
+
+
 #### x-direktiv-examples
 
 Examples can be helpful and in this section full examples of the usage can be provided to users of the service. They are in YAML but stored as string so comments can be added as well if required. 
@@ -623,11 +617,11 @@ paths:
         - title: Basic
           content: |-
             - id: req
-                 type: action
-                 action:
-                   function: request
-                 input: 
-                 url: "http://www.direktiv.io"
+              type: action
+              action:
+                function: request
+                input: 
+                url: "http://www.direktiv.io"
         - title: Post Request
           content: |-
             url: http://www.direktiv.io
@@ -635,7 +629,6 @@ paths:
       parameters:
 ...
 ```
-
 
 #### x-direktiv-errors
 
@@ -658,5 +651,29 @@ paths:
 The doumentation can be generated with one command execute in a directory with a `swagger.yaml` file. This generates a README.md file for the service. 
 
 ```
-docker run --user 1000:1000 -v `pwd`:/tmp/app direktiv/service-builder docs
+function-builder docs
 ```
+
+## Testing
+
+During the generation phase function tests are getting generated based on the information provided. There are five files in the `test` directory. These files are not geting overwritten. If e.g. secrets change the files need to be manually deleted.
+
+**karate.yaml.test.feature**
+
+This file is primarily for local testing. It use the [Karate API testing](https://github.com/karatelabs/karate) framework. If a service has been started with the `run.sh` file there is an additional `run-tests.sh` file which runs the tests in this file against the running function instance. The default behaviour is to run all tests in that file but individual scenarios can be tested adding `--name=scenario-name` to `run-tests.sh`. 
+
+**karate.yaml**
+
+To run thet test in Direktiv directly this karate.yaml flow is getting created. The whole project can be added as Direktiv namespace and tested within Direktiv itself. This flow requires a `host` parameter to define the target to test against. If it is locally that can be the local IP of the computer running the function with `run.sh`. The reason for this file is to include it in e.g. CI/CD flows. 
+
+**tests.yaml**
+
+This is a flow using the function in a regular flow in Direktiv. By default the image used has the pattern `gcr.io/direktiv/apps/<MYFUNCTION>:test`. This can be changed to e.g. `localhost:5000/<MYFUNCTION>` for local tests. 
+
+**karate-event.yaml / tests-event.yaml**
+
+This are support flows if the tests are getting triggered by events within Direktiv. It is useful if multiple functions are part of CI/CD and the tests are getting triggered by events with the function name. 
+
+
+
+
