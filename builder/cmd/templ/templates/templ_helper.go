@@ -196,9 +196,9 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 
 }
 
-func doHttpRequest(method, u, user, pwd string, 
-	headers map[string]string, 
-	insecure, errNo200 bool, data []byte) (map[string]interface{}, error) {
+func doHttpRequest(debug bool, method, u, user, pwd string, 
+	headers map[string]string, insecure, errNo200 bool, 
+	data []byte) (map[string]interface{}, error) {
 
 	ir := make(map[string]interface{})
 	ir[successKey] = false
@@ -222,6 +222,8 @@ func doHttpRequest(method, u, user, pwd string,
 		ir[resultKey] = err.Error()
 		return ir, err
 	}
+	req.Close = true
+
 
 	for k, v := range headers {
 		req.Header.Add(k, v)
@@ -242,6 +244,15 @@ func doHttpRequest(method, u, user, pwd string,
 	client := &http.Client{
 		Jar:       jar,
 		Transport: cr,
+	}
+
+	if debug {
+		fmt.Printf("method: %s, insecure: %v\n", method, insecure)
+		fmt.Printf("url: %s\n", req.URL.String())
+		fmt.Println("Headers:")
+		for k, v := range headers {
+			fmt.Printf("%v = %v\n", k, v)
+		}
 	}
 
 	resp, err := client.Do(req)

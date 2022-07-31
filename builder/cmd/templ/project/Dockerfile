@@ -13,7 +13,7 @@ COPY build/app/restapi restapi/
 
 ENV CGO_LDFLAGS "-static -w -s"
 
-RUN go build -tags osusergo,netgo -o /application cmd/kubectl-server/main.go; 
+RUN go build -tags osusergo,netgo -o /application cmd/APPNAME-server/main.go; 
 
 FROM ubuntu:22.04
 

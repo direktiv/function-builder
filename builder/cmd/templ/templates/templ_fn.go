@@ -16,6 +16,7 @@ for k,v := range params.Body{{ $rh }} {
 {{- end }}
 {{- end }}
 
+
 {{- define "HTTPDATA" }}
 attachData := func(paramsIn interface{}, ri *apps.RequestInfo) ([]byte, error) {
 
@@ -44,7 +45,7 @@ attachData := func(paramsIn interface{}, ri *apps.RequestInfo) ([]byte, error) {
 
 type baseRequest struct {
 	url, method, user, password string
-	insecure, err200 bool
+	insecure, err200, debug bool
 }
 
 baseInfo := func(paramsIn interface{}) (*baseRequest, error) {
@@ -76,6 +77,7 @@ baseInfo := func(paramsIn interface{}) (*baseRequest, error) {
 		password: password,
 		err200: convertTemplateToBool(`{{ .errorNo200 }}`, paramsIn, true), 
 		insecure: convertTemplateToBool(`{{ .insecure }}`, paramsIn, false), 
+		debug: convertTemplateToBool(`{{ .debug }}`, paramsIn, false), 
 	}, nil
 
 }
@@ -207,12 +209,13 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	responses = append(responses, ret)
 
 	// if foreach returns an error there is no continue
-	{{- if ne (index $e "action") "foreach" }}
-	cont = convertTemplateToBool("{{ index . "continue" }}", accParams, true)
+	// {{- if ne (index $e "action") "foreach" }}
+	// default we do not continue
+	cont = convertTemplateToBool("{{ index . "continue" }}", accParams, false)
 	// cont = convertTemplateToBool("{{ .Continue }}", accParams, true)
-	{{- else }}
-	cont = false
-	{{- end }}
+	// {{- else }}
+	// cont = false
+	// {{- end }}
 
 
 
@@ -377,6 +380,7 @@ func runCommand{{ $i }}(ctx context.Context,
 		params accParams, ri *apps.RequestInfo) ([]map[string]interface{}, error) {
 
 	var cmds []map[string]interface{}
+	
 
 	if params.Body == nil {
 		return cmds, nil
@@ -501,8 +505,8 @@ func runCommand{{ $i }}(ctx context.Context,
 		
 
 		ri.Logger().Infof("requesting %v", br.url)
-		r, _ := doHttpRequest(br.method, br.url, br.user, br.password, 
-			headers, br.insecure, br.err200, data)
+		r, _ := doHttpRequest(br.debug, br.method, br.url, br.user, br.password, 
+			headers,br.insecure, br.err200, data)
 
 		ri.Logger().Infof("request result code %v", r["code"])
 		cmds = append(cmds, r)
@@ -559,7 +563,7 @@ func runCommand{{ $i }}(ctx context.Context,
 	{{- end }}
 
 	ri.Logger().Infof("requesting %v", br.url)
-	return doHttpRequest(br.method, br.url, br.user, br.password, 
+	return doHttpRequest(br.debug, br.method, br.url, br.user, br.password, 
 		headers, br.insecure, br.err200, data)
 
 }
