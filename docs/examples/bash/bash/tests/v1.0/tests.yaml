@@ -1,0 +1,25 @@
+url: ""
+functions:
+- type: knative-workflow
+  id: bash
+  image: direktiv.azurecr.io/functions/bash:test
+states:
+- id: state0
+  type: action
+  action:
+    function: bash
+    input:
+      commands:
+      - command: Example of running bash
+  transition: state1
+- id: state1
+  type: action
+  action:
+    function: bash
+    input:
+      commands:
+      - command: Example of running bash
+      files:
+      - data: Hello World
+        mode: "0755"
+        name: hello.txt

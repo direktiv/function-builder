@@ -13,3 +13,10 @@ This simple service accepts a URL and a string. The service searches the webpage
 This service returns all instances in a region. It uses environment variables and uses default values.
 
 [Go to AWS example](aws/README.md)
+
+
+## Crypto Service
+
+This service returns trading information aboyt differnet currencies.
+
+[Go to Crypto example](crypto/README.md)

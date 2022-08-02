@@ -1,0 +1,25 @@
+url: ""
+functions:
+- type: knative-workflow
+  id: crypto
+  image: direktiv.azurecr.io/functions/crypto:test
+states:
+- id: state0
+  type: action
+  action:
+    function: crypto
+    input:
+      commands:
+      - command: Example of running crypto
+  transition: state1
+- id: state1
+  type: action
+  action:
+    function: crypto
+    input:
+      commands:
+      - command: Example of running crypto
+      files:
+      - data: Hello World
+        mode: "0755"
+        name: hello.txt

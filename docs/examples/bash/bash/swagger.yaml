@@ -1,20 +1,20 @@
 swagger: "2.0"
 info:
-  description: Run APPNAME in Direktiv
-  title: APPNAME
+  description: Run bash in Direktiv
+  title: bash
   version: "1.0"
   x-direktiv-meta:
-    container: direktiv.azurecr.io/functions/APPNAME
+    container: direktiv.azurecr.io/functions/bash
     maintainer: |-
       [direktiv.io](https://www.direktiv.io) 
-    issues: https://github.com/direktiv-apps/APPNAME/issues
-    url: https://github.com/direktiv-apps/APPNAME  
+    issues: https://github.com/direktiv-apps/bash/issues
+    url: https://github.com/direktiv-apps/bash  
     categories:
     - unknown
     license: |-
       [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)
     long-description: >-
-      Run APPNAME in Direktiv as a function
+      Run bash in Direktiv as a function
 consumes:
 - application/json
 produces:
@@ -55,79 +55,52 @@ paths:
           in: body
           schema:
             type: object
+            required:
+              - address
+              - search
             properties:
-              files:
-                type: array
-                items:
-                  $ref: '#/definitions/direktivFile'
-                description: File to create before running commands.
-                default: []
-              commands:
-                type: array
-                description: Array of commands.
-                items:
-                  type: object
-                  properties:
-                    command:
-                      type: string
-                      description: Command to run
-                    silent: 
-                      type: boolean
-                      description: If set to false the command will not print output to logs.
-                      default: false
-                    print: 
-                      type: boolean
-                      description: If set to false the command will not print the full command with arguments to logs.
-                      default: true
-                    continue: 
-                      type: boolean
-                      description: Stops excecution if command fails, otherwise proceeds with next command 
-                default: 
-                - command: echo Hello
+              address:
+                type: string
+              search:
+                type: string
       # direktiv code generation is configured here
       x-direktiv-function: |-
         functions:
-        - id: APPNAME
-          image: direktiv.azurecr.io/functions/APPNAME:1.0
+        - id: bash
+          image: direktiv.azurecr.io/functions/bash:1.0
           type: knative-workflow
       x-direktiv-examples:
         # ADD MORE EXAMPLES HERE
         - title: Basic
           content: |-
-            - id: APPNAME
+            - id: bash
               type: action
               action:
-                function: APPNAME
+                function: bash
                 input: 
                   commands:
-                  - command: Example of running APPNAME
+                  - command: Example of running bash
         - title: Advanced
           content: |-
-            - id: APPNAME
+            - id: bash
               type: action
               action:
-                function: APPNAME
+                function: bash
                 input: 
                   files:
                   - name: hello.txt
                     data: Hello World
                     mode: '0755'
                   commands:
-                  - command: Example of running APPNAME
-      x-direktiv-secrets:
-        - name: APPNAMESecret
-          description: This is a secret value
+                  - command: Example of running bash
       x-direktiv:  
         cmds:
-        - action: foreach
-          loop: .Commands
-          exec: '{{ .Item.Command }}'
-          silent: '{{ .Item.Silent }}'
-          print: '{{ .Item.Print }}'
-          continue: '{{ .Item.Continue }}'
+        - action: exec
+          exec: |-
+            bash -c 'curl -sL {{ .Address }} | grep -o -i {{ .Search }} | wc -l'
         output: |
           {
-            "APPNAME": {{ index . 0 | toJson }}
+            "hits": "{{ index (index . 0) "result" }}"
           }
       x-direktiv-errors:
         io.direktiv.command.error: Command execution failed
@@ -136,27 +109,8 @@ paths:
       responses:
         200:
           description: List of executed commands.
-          examples:
-            APPNAME:
-            - result: # EXAMPLE RESULT HERE
-              success: true
-            - result: #  EXAMPLE RESULT HERE
-              success: true
           schema:
             type: object
-            properties:
-              APPNAME:
-                type: array
-                items:
-                  type: object
-                  required:
-                  - success
-                  - result
-                  properties:
-                    success:
-                      type: boolean
-                    result:
-                      additionalProperties: {}
         default:
           description: generic error response
           headers:

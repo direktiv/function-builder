@@ -399,7 +399,7 @@ Although a HTTP request could be achieved with a `curl` command it is provided a
 ```yaml
 - action: http
   url: http://www.direktiv.io/{{ .Path }}
-  method: get
+  method: GET
   headers: 
     - Content-Type: application/json
   username: hello
