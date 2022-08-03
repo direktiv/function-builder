@@ -101,7 +101,6 @@ FROM ubuntu:22.04
 
 RUN apt-get update && apt-get install ca-certificates curl grep -y
 
-# DON'T CHANGE BELOW 
 COPY --from=build /application /bin/application
 
 EXPOSE 8080
