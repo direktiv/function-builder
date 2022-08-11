@@ -20,9 +20,9 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// NewAwsCliAPI creates a new AwsCli instance
-func NewAwsCliAPI(spec *loads.Document) *AwsCliAPI {
-	return &AwsCliAPI{
+// NewAwsAPI creates a new Aws instance
+func NewAwsAPI(spec *loads.Document) *AwsAPI {
+	return &AwsAPI{
 		handlers:            make(map[string]map[string]http.Handler),
 		formats:             strfmt.Default,
 		defaultConsumes:     "application/json",
@@ -51,8 +51,8 @@ func NewAwsCliAPI(spec *loads.Document) *AwsCliAPI {
 	}
 }
 
-/*AwsCliAPI Description for aws-cli */
-type AwsCliAPI struct {
+/*AwsAPI Run aws in Direktiv */
+type AwsAPI struct {
 	spec            *loads.Document
 	context         *middleware.Context
 	handlers        map[string]map[string]http.Handler
@@ -109,52 +109,52 @@ type AwsCliAPI struct {
 }
 
 // UseRedoc for documentation at /docs
-func (o *AwsCliAPI) UseRedoc() {
+func (o *AwsAPI) UseRedoc() {
 	o.useSwaggerUI = false
 }
 
 // UseSwaggerUI for documentation at /docs
-func (o *AwsCliAPI) UseSwaggerUI() {
+func (o *AwsAPI) UseSwaggerUI() {
 	o.useSwaggerUI = true
 }
 
 // SetDefaultProduces sets the default produces media type
-func (o *AwsCliAPI) SetDefaultProduces(mediaType string) {
+func (o *AwsAPI) SetDefaultProduces(mediaType string) {
 	o.defaultProduces = mediaType
 }
 
 // SetDefaultConsumes returns the default consumes media type
-func (o *AwsCliAPI) SetDefaultConsumes(mediaType string) {
+func (o *AwsAPI) SetDefaultConsumes(mediaType string) {
 	o.defaultConsumes = mediaType
 }
 
 // SetSpec sets a spec that will be served for the clients.
-func (o *AwsCliAPI) SetSpec(spec *loads.Document) {
+func (o *AwsAPI) SetSpec(spec *loads.Document) {
 	o.spec = spec
 }
 
 // DefaultProduces returns the default produces media type
-func (o *AwsCliAPI) DefaultProduces() string {
+func (o *AwsAPI) DefaultProduces() string {
 	return o.defaultProduces
 }
 
 // DefaultConsumes returns the default consumes media type
-func (o *AwsCliAPI) DefaultConsumes() string {
+func (o *AwsAPI) DefaultConsumes() string {
 	return o.defaultConsumes
 }
 
 // Formats returns the registered string formats
-func (o *AwsCliAPI) Formats() strfmt.Registry {
+func (o *AwsAPI) Formats() strfmt.Registry {
 	return o.formats
 }
 
 // RegisterFormat registers a custom format validator
-func (o *AwsCliAPI) RegisterFormat(name string, format strfmt.Format, validator strfmt.Validator) {
+func (o *AwsAPI) RegisterFormat(name string, format strfmt.Format, validator strfmt.Validator) {
 	o.formats.Add(name, format, validator)
 }
 
-// Validate validates the registrations in the AwsCliAPI
-func (o *AwsCliAPI) Validate() error {
+// Validate validates the registrations in the AwsAPI
+func (o *AwsAPI) Validate() error {
 	var unregistered []string
 
 	if o.JSONConsumer == nil {
@@ -180,23 +180,23 @@ func (o *AwsCliAPI) Validate() error {
 }
 
 // ServeErrorFor gets a error handler for a given operation id
-func (o *AwsCliAPI) ServeErrorFor(operationID string) func(http.ResponseWriter, *http.Request, error) {
+func (o *AwsAPI) ServeErrorFor(operationID string) func(http.ResponseWriter, *http.Request, error) {
 	return o.ServeError
 }
 
 // AuthenticatorsFor gets the authenticators for the specified security schemes
-func (o *AwsCliAPI) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]runtime.Authenticator {
+func (o *AwsAPI) AuthenticatorsFor(schemes map[string]spec.SecurityScheme) map[string]runtime.Authenticator {
 	return nil
 }
 
 // Authorizer returns the registered authorizer
-func (o *AwsCliAPI) Authorizer() runtime.Authorizer {
+func (o *AwsAPI) Authorizer() runtime.Authorizer {
 	return nil
 }
 
 // ConsumersFor gets the consumers for the specified media types.
 // MIME type parameters are ignored here.
-func (o *AwsCliAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer {
+func (o *AwsAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consumer {
 	result := make(map[string]runtime.Consumer, len(mediaTypes))
 	for _, mt := range mediaTypes {
 		switch mt {
@@ -213,7 +213,7 @@ func (o *AwsCliAPI) ConsumersFor(mediaTypes []string) map[string]runtime.Consume
 
 // ProducersFor gets the producers for the specified media types.
 // MIME type parameters are ignored here.
-func (o *AwsCliAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer {
+func (o *AwsAPI) ProducersFor(mediaTypes []string) map[string]runtime.Producer {
 	result := make(map[string]runtime.Producer, len(mediaTypes))
 	for _, mt := range mediaTypes {
 		switch mt {
@@ -229,7 +229,7 @@ func (o *AwsCliAPI) ProducersFor(mediaTypes []string) map[string]runtime.Produce
 }
 
 // HandlerFor gets a http.Handler for the provided operation method and path
-func (o *AwsCliAPI) HandlerFor(method, path string) (http.Handler, bool) {
+func (o *AwsAPI) HandlerFor(method, path string) (http.Handler, bool) {
 	if o.handlers == nil {
 		return nil, false
 	}
@@ -244,8 +244,8 @@ func (o *AwsCliAPI) HandlerFor(method, path string) (http.Handler, bool) {
 	return h, ok
 }
 
-// Context returns the middleware context for the aws cli API
-func (o *AwsCliAPI) Context() *middleware.Context {
+// Context returns the middleware context for the aws API
+func (o *AwsAPI) Context() *middleware.Context {
 	if o.context == nil {
 		o.context = middleware.NewRoutableContext(o.spec, o, nil)
 	}
@@ -253,7 +253,7 @@ func (o *AwsCliAPI) Context() *middleware.Context {
 	return o.context
 }
 
-func (o *AwsCliAPI) initHandlerCache() {
+func (o *AwsAPI) initHandlerCache() {
 	o.Context() // don't care about the result, just that the initialization happened
 	if o.handlers == nil {
 		o.handlers = make(map[string]map[string]http.Handler)
@@ -271,7 +271,7 @@ func (o *AwsCliAPI) initHandlerCache() {
 
 // Serve creates a http handler to serve the API over HTTP
 // can be used directly in http.ListenAndServe(":8000", api.Serve(nil))
-func (o *AwsCliAPI) Serve(builder middleware.Builder) http.Handler {
+func (o *AwsAPI) Serve(builder middleware.Builder) http.Handler {
 	o.Init()
 
 	if o.Middleware != nil {
@@ -284,24 +284,24 @@ func (o *AwsCliAPI) Serve(builder middleware.Builder) http.Handler {
 }
 
 // Init allows you to just initialize the handler cache, you can then recompose the middleware as you see fit
-func (o *AwsCliAPI) Init() {
+func (o *AwsAPI) Init() {
 	if len(o.handlers) == 0 {
 		o.initHandlerCache()
 	}
 }
 
 // RegisterConsumer allows you to add (or override) a consumer for a media type.
-func (o *AwsCliAPI) RegisterConsumer(mediaType string, consumer runtime.Consumer) {
+func (o *AwsAPI) RegisterConsumer(mediaType string, consumer runtime.Consumer) {
 	o.customConsumers[mediaType] = consumer
 }
 
 // RegisterProducer allows you to add (or override) a producer for a media type.
-func (o *AwsCliAPI) RegisterProducer(mediaType string, producer runtime.Producer) {
+func (o *AwsAPI) RegisterProducer(mediaType string, producer runtime.Producer) {
 	o.customProducers[mediaType] = producer
 }
 
 // AddMiddlewareFor adds a http middleware to existing handler
-func (o *AwsCliAPI) AddMiddlewareFor(method, path string, builder middleware.Builder) {
+func (o *AwsAPI) AddMiddlewareFor(method, path string, builder middleware.Builder) {
 	um := strings.ToUpper(method)
 	if path == "/" {
 		path = ""

@@ -11,7 +11,7 @@ import (
 func DeleteDirektivHandle(params DeleteParams) middleware.Responder {
 
 	actionId := *params.DirektivActionID
-	defer sm.Delete(actionId)
+	// defer sm.Delete(actionId)
 
 	if actionId == "" {
 		return NewDeleteOK()
@@ -23,21 +23,24 @@ func DeleteDirektivHandle(params DeleteParams) middleware.Responder {
 		return NewDeleteOK()
 	}
 
-	cancel, ok := sm.Load(actionId)
+	// cancel, ok := sm.Load(actionId)
+	ci, ok := sm.Load(actionId)
 	if !ok {
-		ri.Logger().Infof("can not load context for action id: %v", err)
+		ri.Logger().Infof("can not load context for action id1", err)
 		return NewDeleteOK()
 	}
+
+	cinfo, ok := ci.(*ctxInfo)
+	if !ok {
+		ri.Logger().Infof("can not load context for action id2")
+		return NewDeleteOK()
+	}
+
+	// set to cancelled
+	cinfo.cancelled = true
 
 	ri.Logger().Infof("cancelling action id %v", actionId)
-
-	cf, ok := cancel.(context.CancelFunc)
-	if !ok {
-		ri.Logger().Infof("can not get cancel function for action id: %v", err)
-		return NewDeleteOK()
-	}
-
-	cf()
+	cinfo.cf()
 
 	cmd, err := templateString("echo 'cancel {{ .DirektivActionID }}'", params)
 	if err != nil {

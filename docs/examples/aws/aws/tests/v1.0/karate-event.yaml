@@ -1,0 +1,46 @@
+url: ""
+functions:
+- type: subflow
+  id: call-karate
+  workflow: karate
+start:
+  type: event
+  state: call-subflow
+  event:
+    type: io.direktiv.function.test
+    context:
+      function: 'aws'
+      version: '1.0'
+states:
+- id: call-subflow
+  type: action
+  action:
+    function: call-karate
+    input:
+      host: jq(."io.direktiv.function.test".host)
+  catch:
+  - error: "*"
+    transition: report-failure
+  transition: report-success
+- id: report-success
+  type: generateEvent
+  event:
+    type: io.direktiv.function.test.result.karate
+    source: karate
+    data: ''  
+    context:
+      result: success
+      function: jq(."io.direktiv.function.test".function)
+      version: jq(."io.direktiv.function.test".version)
+- id: report-failure
+  type: generateEvent
+  event:
+    type: io.direktiv.function.test.result.karate
+    source: karate
+    data: jq(.error)
+    context:
+      result: failure
+      function: jq(."io.direktiv.function.test".function)
+      version: jq(."io.direktiv.function.test".version)
+
+

@@ -10,7 +10,7 @@ import (
 	"github.com/direktiv/apps/go/pkg/apps"
 	"github.com/go-openapi/runtime/middleware"
 
-	"aws-cli/models"
+	"app/models"
 )
 
 const (
@@ -33,21 +33,28 @@ const (
 
 type accParams struct {
 	PostParams
-	Commands []interface{}
+	Commands    []interface{}
+	DirektivDir string
 }
 
 type accParamsTemplate struct {
-	PostBody
-	Commands []interface{}
+	models.PostParamsBody
+	Commands    []interface{}
+	DirektivDir string
+}
+
+type ctxInfo struct {
+	cf        context.CancelFunc
+	cancelled bool
 }
 
 func PostDirektivHandle(params PostParams) middleware.Responder {
-	fmt.Printf("params in: %+v", params)
 	var resp interface{}
 
 	var (
-		err error
-		ret interface{}
+		err  error
+		ret  interface{}
+		cont bool
 	)
 
 	ri, err := apps.RequestinfoFromRequest(params.HTTPRequest)
@@ -56,8 +63,13 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	}
 
 	ctx, cancel := context.WithCancel(params.HTTPRequest.Context())
-	sm.Store(*params.DirektivActionID, cancel)
-	defer sm.Delete(params.DirektivActionID)
+
+	sm.Store(*params.DirektivActionID, &ctxInfo{
+		cancel,
+		false,
+	})
+
+	defer sm.Delete(*params.DirektivActionID)
 
 	var responses []interface{}
 
@@ -65,27 +77,44 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	accParams := accParams{
 		params,
 		nil,
+		ri.Dir(),
 	}
 
 	ret, err = runCommand0(ctx, accParams, ri)
+
 	responses = append(responses, ret)
 
-	if err != nil && true {
+	// if foreach returns an error there is no continue
+	//
+	// default we do not continue
+	cont = convertTemplateToBool("<no value>", accParams, false)
+	// cont = convertTemplateToBool("<no value>", accParams, true)
+	//
+
+	if err != nil && !cont {
+
 		errName := cmdErr
+
+		// if the delete function added the cancel tag
+		ci, ok := sm.Load(*params.DirektivActionID)
+		if ok {
+			cinfo, ok := ci.(*ctxInfo)
+			if ok && cinfo.cancelled {
+				errName = "direktiv.actionCancelled"
+				err = fmt.Errorf("action got cancel request")
+			}
+		}
+
 		return generateError(errName, err)
 	}
 
 	paramsCollector = append(paramsCollector, ret)
 	accParams.Commands = paramsCollector
 
-	fmt.Printf("object going in output template: %+v\n", responses)
-
-	s, err := templateString(`{ "instances": {{ index (index . 0) "result"  | toJson }} }`, responses)
+	responseBytes, err := json.Marshal(responses)
 	if err != nil {
 		return generateError(outErr, err)
 	}
-	responseBytes := []byte(s)
-
 	err = json.Unmarshal(responseBytes, &resp)
 	if err != nil {
 		return generateError(outErr, err)
@@ -101,16 +130,15 @@ func runCommand0(ctx context.Context,
 	ir := make(map[string]interface{})
 	ir[successKey] = false
 
-	ri.Logger().Infof("executing command")
-
 	at := accParamsTemplate{
-		params.Body,
+		*params.Body,
 		params.Commands,
+		params.DirektivDir,
 	}
-	fmt.Printf("object going in command template: %+v\n", at)
 
 	cmd, err := templateString(`aws ec2 describe-instances --query "Reservations[].Instances[].InstanceId"`, at)
 	if err != nil {
+		ri.Logger().Infof("error executing command: %v", err)
 		ir[resultKey] = err.Error()
 		return ir, err
 	}
@@ -118,15 +146,17 @@ func runCommand0(ctx context.Context,
 
 	silent := convertTemplateToBool("<no value>", at, false)
 	print := convertTemplateToBool("<no value>", at, true)
-	output := ``
+	output := ""
 
 	envs := []string{}
 	env0, _ := templateString(`AWS_ACCESS_KEY_ID={{ .AccessKey }}`, at)
 	envs = append(envs, env0)
 	env1, _ := templateString(`AWS_SECRET_ACCESS_KEY={{ .SecretKey }}`, at)
 	envs = append(envs, env1)
-	env2, _ := templateString(`AWS_DEFAULT_REGION={{ default "us-east-1" .Region }}`, at)
+	env2, _ := templateString(`AWS_DEFAULT_OUTPUT=json`, at)
 	envs = append(envs, env2)
+	env3, _ := templateString(`AWS_DEFAULT_REGION={{ default "us-east-1" .Region }}`, at)
+	envs = append(envs, env3)
 
 	return runCmd(ctx, cmd, envs, output, silent, print, ri)
 

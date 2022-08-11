@@ -1,12 +1,20 @@
 swagger: "2.0"
 info:
-  description: Description for aws-cli
-  title: aws-cli
-  version: 1.0.0
-  x-direktiv:
-    container: direktiv/aws-cli
-    category: unknown
-    long-description: This is a longer description for the application aws-cli
+  description: Run aws in Direktiv
+  title: aws
+  version: "1.0"
+  x-direktiv-meta:
+    container: direktiv.azurecr.io/functions/aws
+    maintainer: |-
+      [direktiv.io](https://www.direktiv.io) 
+    issues: https://github.com/direktiv-apps/aws/issues
+    url: https://github.com/direktiv-apps/aws  
+    categories:
+    - unknown
+    license: |-
+      [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)
+    long-description: >-
+      Run aws in Direktiv as a function
 consumes:
 - application/json
 produces:
@@ -32,12 +40,14 @@ paths:
         - name: Direktiv-ActionID
           in: header
           type: string
+          default: development
           description: |
             direktiv action id is an UUID. 
             For development it can be set to 'development'
         - name: Direktiv-TempDir
           in: header
           type: string
+          default: /tmp
           description: |
             direktiv temp dir is the working directory for that request
             For development it can be set to e.g. '/tmp'
@@ -56,25 +66,58 @@ paths:
               region:
                 type: string
       # direktiv code generation is configured here
-      x-direktiv:
-        debug: true  
+      x-direktiv-function: |-
+        functions:
+        - id: aws
+          image: direktiv.azurecr.io/functions/aws:1.0
+          type: knative-workflow
+      x-direktiv-examples:
+        # ADD MORE EXAMPLES HERE
+        - title: Basic
+          content: |-
+            - id: aws
+              type: action
+              action:
+                function: aws
+                input: 
+                  commands:
+                  - command: Example of running aws
+        - title: Advanced
+          content: |-
+            - id: aws
+              type: action
+              action:
+                function: aws
+                input: 
+                  files:
+                  - name: hello.txt
+                    data: Hello World
+                    mode: '0755'
+                  commands:
+                  - command: Example of running aws
+      x-direktiv-secrets:
+        - name: awsKey
+          description: This is the AWS key
+        - name: awsSecret
+          description: This is the AWS secret
+      x-direktiv:  
         cmds:
         - action: exec
           exec: aws ec2 describe-instances --query "Reservations[].Instances[].InstanceId"
           env:  
-            - AWS_ACCESS_KEY_ID={{ .AccessKey }}
-            - AWS_SECRET_ACCESS_KEY={{ .SecretKey }}
-            - AWS_DEFAULT_REGION={{ default "us-east-1" .Region }}
-        output: |-
-          { "instances": {{ index (index . 0) "result"  | toJson }} }
+          - AWS_ACCESS_KEY_ID={{ .AccessKey }}
+          - AWS_SECRET_ACCESS_KEY={{ .SecretKey }}
+          - AWS_DEFAULT_OUTPUT=json
+          - AWS_DEFAULT_REGION={{ default "us-east-1" .Region }}
+      x-direktiv-errors:
+        io.direktiv.command.error: Command execution failed
+        io.direktiv.output.error: Template error for output generation of the service
+        io.direktiv.ri.error: Can not create information object from request
       responses:
         200:
-          description: nice greeting
+          description: List of executed commands.
           schema:
             type: object
-            additionalProperties: {}
-            example: 
-              greeting: Hello YourName
         default:
           description: generic error response
           headers:

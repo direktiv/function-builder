@@ -25,7 +25,7 @@ import (
 	flags "github.com/jessevdk/go-flags"
 	"golang.org/x/net/netutil"
 
-	"aws-cli/restapi/operations"
+	"app/restapi/operations"
 )
 
 const (
@@ -42,8 +42,8 @@ func init() {
 	}
 }
 
-// NewServer creates a new api aws cli server but does not configure it
-func NewServer(api *operations.AwsCliAPI) *Server {
+// NewServer creates a new api aws server but does not configure it
+func NewServer(api *operations.AwsAPI) *Server {
 	s := new(Server)
 
 	s.shutdown = make(chan struct{})
@@ -57,6 +57,9 @@ func (s *Server) ConfigureAPI() {
 	if s.api != nil {
 		s.handler = configureAPI(s.api)
 	}
+
+	s.ReadTimeout = 86400 * time.Second
+	s.WriteTimeout = 86400 * time.Second
 }
 
 // ConfigureFlags configures the additional flags defined by the handlers. Needs to be called before the parser.Parse
@@ -66,14 +69,14 @@ func (s *Server) ConfigureFlags() {
 	}
 }
 
-// Server for the aws cli API
+// Server for the aws API
 type Server struct {
 	EnabledListeners []string         `long:"scheme" description:"the listeners to enable, this can be repeated and defaults to the schemes in the swagger spec"`
 	CleanupTimeout   time.Duration    `long:"cleanup-timeout" description:"grace period for which to wait before killing idle connections" default:"10s"`
 	GracefulTimeout  time.Duration    `long:"graceful-timeout" description:"grace period for which to wait before shutting down the server" default:"15s"`
 	MaxHeaderSize    flagext.ByteSize `long:"max-header-size" description:"controls the maximum number of bytes the server will read parsing the request header's keys and values, including the request line. It does not limit the size of the request body." default:"1MiB"`
 
-	SocketPath    flags.Filename `long:"socket-path" description:"the unix socket to listen on" default:"/var/run/aws-cli.sock"`
+	SocketPath    flags.Filename `long:"socket-path" description:"the unix socket to listen on" default:"/var/run/aws.sock"`
 	domainSocketL net.Listener
 
 	Host         string        `long:"host" description:"the IP to listen on" default:"localhost" env:"HOST"`
@@ -95,7 +98,7 @@ type Server struct {
 	TLSWriteTimeout   time.Duration  `long:"tls-write-timeout" description:"maximum duration before timing out write of the response"`
 	httpsServerL      net.Listener
 
-	api          *operations.AwsCliAPI
+	api          *operations.AwsAPI
 	handler      http.Handler
 	hasListeners bool
 	shutdown     chan struct{}
@@ -125,7 +128,7 @@ func (s *Server) Fatalf(f string, args ...interface{}) {
 }
 
 // SetAPI configures the server with the specified API. Needs to be called before Serve
-func (s *Server) SetAPI(api *operations.AwsCliAPI) {
+func (s *Server) SetAPI(api *operations.AwsAPI) {
 	if api == nil {
 		s.api = nil
 		s.handler = nil
@@ -152,6 +155,7 @@ func (s *Server) hasScheme(scheme string) bool {
 
 // Serve the api
 func (s *Server) Serve() (err error) {
+
 	if !s.hasListeners {
 		if err = s.Listen(); err != nil {
 			return err
@@ -186,13 +190,13 @@ func (s *Server) Serve() (err error) {
 
 		servers = append(servers, domainSocket)
 		wg.Add(1)
-		s.Logf("Serving aws cli at unix://%s", s.SocketPath)
+		s.Logf("Serving aws at unix://%s", s.SocketPath)
 		go func(l net.Listener) {
 			defer wg.Done()
 			if err := domainSocket.Serve(l); err != nil && err != http.ErrServerClosed {
 				s.Fatalf("%v", err)
 			}
-			s.Logf("Stopped serving aws cli at unix://%s", s.SocketPath)
+			s.Logf("Stopped serving aws at unix://%s", s.SocketPath)
 		}(s.domainSocketL)
 	}
 
@@ -216,13 +220,13 @@ func (s *Server) Serve() (err error) {
 
 		servers = append(servers, httpServer)
 		wg.Add(1)
-		s.Logf("Serving aws cli at http://%s", s.httpServerL.Addr())
+		s.Logf("Serving aws at http://%s", s.httpServerL.Addr())
 		go func(l net.Listener) {
 			defer wg.Done()
 			if err := httpServer.Serve(l); err != nil && err != http.ErrServerClosed {
 				s.Fatalf("%v", err)
 			}
-			s.Logf("Stopped serving aws cli at http://%s", l.Addr())
+			s.Logf("Stopped serving aws at http://%s", l.Addr())
 		}(s.httpServerL)
 	}
 
@@ -309,13 +313,13 @@ func (s *Server) Serve() (err error) {
 
 		servers = append(servers, httpsServer)
 		wg.Add(1)
-		s.Logf("Serving aws cli at https://%s", s.httpsServerL.Addr())
+		s.Logf("Serving aws at https://%s", s.httpsServerL.Addr())
 		go func(l net.Listener) {
 			defer wg.Done()
 			if err := httpsServer.Serve(l); err != nil && err != http.ErrServerClosed {
 				s.Fatalf("%v", err)
 			}
-			s.Logf("Stopped serving aws cli at https://%s", l.Addr())
+			s.Logf("Stopped serving aws at https://%s", l.Addr())
 		}(tls.NewListener(s.httpsServerL, httpsServer.TLSConfig))
 	}
 

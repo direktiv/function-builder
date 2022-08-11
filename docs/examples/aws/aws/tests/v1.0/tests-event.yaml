@@ -1,0 +1,44 @@
+url: ""
+functions:
+- type: subflow
+  id: call-tests
+  workflow: tests
+start:
+  type: event
+  state: call-subflow
+  event:
+    type: io.direktiv.function.test
+    context:
+      function: 'aws'
+      version: '1.0'
+states:
+- id: call-subflow
+  type: action
+  action:
+    function: call-tests
+  catch:
+  - error: "*"
+    transition: report-failure
+  transition: report-success
+- id: report-success
+  type: generateEvent
+  event:
+    type: io.direktiv.function.test.result
+    source: tests
+    data: ''  
+    context:
+      result: success
+      function: jq(."io.direktiv.function.test".function)
+      version: jq(."io.direktiv.function.test".version)
+- id: report-failure
+  type: generateEvent
+  event:
+    type: io.direktiv.function.test.result
+    source: tests
+    data: jq(.error)
+    context:
+      result: failure
+      function: jq(."io.direktiv.function.test".function)
+      version: jq(."io.direktiv.function.test".version)
+
+

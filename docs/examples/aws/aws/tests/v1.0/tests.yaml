@@ -1,0 +1,25 @@
+url: ""
+functions:
+- type: knative-workflow
+  id: aws
+  image: direktiv.azurecr.io/functions/aws:test
+states:
+- id: state0
+  type: action
+  action:
+    function: aws
+    input:
+      commands:
+      - command: Example of running aws
+  transition: state1
+- id: state1
+  type: action
+  action:
+    function: aws
+    input:
+      commands:
+      - command: Example of running aws
+      files:
+      - data: Hello World
+        mode: "0755"
+        name: hello.txt

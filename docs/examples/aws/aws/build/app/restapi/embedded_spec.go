@@ -29,13 +29,19 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
-    "description": "Description for aws-cli",
-    "title": "aws-cli",
-    "version": "1.0.0",
-    "x-direktiv": {
-      "category": "unknown",
-      "container": "direktiv/aws-cli",
-      "long-description": "This is a longer description for the application aws-cli"
+    "description": "Run aws in Direktiv",
+    "title": "aws",
+    "version": "1.0",
+    "x-direktiv-meta": {
+      "categories": [
+        "unknown"
+      ],
+      "container": "direktiv.azurecr.io/functions/aws",
+      "issues": "https://github.com/direktiv-apps/aws/issues",
+      "license": "[Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)",
+      "long-description": "Run aws in Direktiv as a function",
+      "maintainer": "[direktiv.io](https://www.direktiv.io) ",
+      "url": "https://github.com/direktiv-apps/aws"
     }
   },
   "paths": {
@@ -44,12 +50,14 @@ func init() {
         "parameters": [
           {
             "type": "string",
+            "default": "development",
             "description": "direktiv action id is an UUID. \nFor development it can be set to 'development'\n",
             "name": "Direktiv-ActionID",
             "in": "header"
           },
           {
             "type": "string",
+            "default": "/tmp",
             "description": "direktiv temp dir is the working directory for that request\nFor development it can be set to e.g. '/tmp'\n",
             "name": "Direktiv-TempDir",
             "in": "header"
@@ -79,13 +87,9 @@ func init() {
         ],
         "responses": {
           "200": {
-            "description": "nice greeting",
+            "description": "List of executed commands.",
             "schema": {
-              "type": "object",
-              "additionalProperties": false,
-              "example": {
-                "greeting": "Hello YourName"
-              }
+              "type": "object"
             }
           },
           "default": {
@@ -110,14 +114,39 @@ func init() {
               "env": [
                 "AWS_ACCESS_KEY_ID={{ .AccessKey }}",
                 "AWS_SECRET_ACCESS_KEY={{ .SecretKey }}",
+                "AWS_DEFAULT_OUTPUT=json",
                 "AWS_DEFAULT_REGION={{ default \"us-east-1\" .Region }}"
               ],
               "exec": "aws ec2 describe-instances --query \"Reservations[].Instances[].InstanceId\""
             }
-          ],
-          "debug": true,
-          "output": "{ \"instances\": {{ index (index . 0) \"result\"  | toJson }} }"
-        }
+          ]
+        },
+        "x-direktiv-errors": {
+          "io.direktiv.command.error": "Command execution failed",
+          "io.direktiv.output.error": "Template error for output generation of the service",
+          "io.direktiv.ri.error": "Can not create information object from request"
+        },
+        "x-direktiv-examples": [
+          {
+            "content": "- id: aws\n  type: action\n  action:\n    function: aws\n    input: \n      commands:\n      - command: Example of running aws",
+            "title": "Basic"
+          },
+          {
+            "content": "- id: aws\n  type: action\n  action:\n    function: aws\n    input: \n      files:\n      - name: hello.txt\n        data: Hello World\n        mode: '0755'\n      commands:\n      - command: Example of running aws",
+            "title": "Advanced"
+          }
+        ],
+        "x-direktiv-function": "functions:\n- id: aws\n  image: direktiv.azurecr.io/functions/aws:1.0\n  type: knative-workflow",
+        "x-direktiv-secrets": [
+          {
+            "description": "This is the AWS key",
+            "name": "awsKey"
+          },
+          {
+            "description": "This is the AWS secret",
+            "name": "awsSecret"
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -178,13 +207,19 @@ func init() {
   ],
   "swagger": "2.0",
   "info": {
-    "description": "Description for aws-cli",
-    "title": "aws-cli",
-    "version": "1.0.0",
-    "x-direktiv": {
-      "category": "unknown",
-      "container": "direktiv/aws-cli",
-      "long-description": "This is a longer description for the application aws-cli"
+    "description": "Run aws in Direktiv",
+    "title": "aws",
+    "version": "1.0",
+    "x-direktiv-meta": {
+      "categories": [
+        "unknown"
+      ],
+      "container": "direktiv.azurecr.io/functions/aws",
+      "issues": "https://github.com/direktiv-apps/aws/issues",
+      "license": "[Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0)",
+      "long-description": "Run aws in Direktiv as a function",
+      "maintainer": "[direktiv.io](https://www.direktiv.io) ",
+      "url": "https://github.com/direktiv-apps/aws"
     }
   },
   "paths": {
@@ -193,12 +228,14 @@ func init() {
         "parameters": [
           {
             "type": "string",
+            "default": "development",
             "description": "direktiv action id is an UUID. \nFor development it can be set to 'development'\n",
             "name": "Direktiv-ActionID",
             "in": "header"
           },
           {
             "type": "string",
+            "default": "/tmp",
             "description": "direktiv temp dir is the working directory for that request\nFor development it can be set to e.g. '/tmp'\n",
             "name": "Direktiv-TempDir",
             "in": "header"
@@ -207,34 +244,15 @@ func init() {
             "name": "body",
             "in": "body",
             "schema": {
-              "type": "object",
-              "required": [
-                "access-key",
-                "secret-key"
-              ],
-              "properties": {
-                "access-key": {
-                  "type": "string"
-                },
-                "region": {
-                  "type": "string"
-                },
-                "secret-key": {
-                  "type": "string"
-                }
-              }
+              "$ref": "#/definitions/postParamsBody"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "nice greeting",
+            "description": "List of executed commands.",
             "schema": {
-              "type": "object",
-              "additionalProperties": false,
-              "example": {
-                "greeting": "Hello YourName"
-              }
+              "type": "object"
             }
           },
           "default": {
@@ -259,14 +277,39 @@ func init() {
               "env": [
                 "AWS_ACCESS_KEY_ID={{ .AccessKey }}",
                 "AWS_SECRET_ACCESS_KEY={{ .SecretKey }}",
+                "AWS_DEFAULT_OUTPUT=json",
                 "AWS_DEFAULT_REGION={{ default \"us-east-1\" .Region }}"
               ],
               "exec": "aws ec2 describe-instances --query \"Reservations[].Instances[].InstanceId\""
             }
-          ],
-          "debug": true,
-          "output": "{ \"instances\": {{ index (index . 0) \"result\"  | toJson }} }"
-        }
+          ]
+        },
+        "x-direktiv-errors": {
+          "io.direktiv.command.error": "Command execution failed",
+          "io.direktiv.output.error": "Template error for output generation of the service",
+          "io.direktiv.ri.error": "Can not create information object from request"
+        },
+        "x-direktiv-examples": [
+          {
+            "content": "- id: aws\n  type: action\n  action:\n    function: aws\n    input: \n      commands:\n      - command: Example of running aws",
+            "title": "Basic"
+          },
+          {
+            "content": "- id: aws\n  type: action\n  action:\n    function: aws\n    input: \n      files:\n      - name: hello.txt\n        data: Hello World\n        mode: '0755'\n      commands:\n      - command: Example of running aws",
+            "title": "Advanced"
+          }
+        ],
+        "x-direktiv-function": "functions:\n- id: aws\n  image: direktiv.azurecr.io/functions/aws:1.0\n  type: knative-workflow",
+        "x-direktiv-secrets": [
+          {
+            "description": "This is the AWS key",
+            "name": "awsKey"
+          },
+          {
+            "description": "This is the AWS secret",
+            "name": "awsSecret"
+          }
+        ]
       },
       "delete": {
         "parameters": [
@@ -312,6 +355,25 @@ func init() {
           "type": "string"
         }
       }
+    },
+    "postParamsBody": {
+      "type": "object",
+      "required": [
+        "access-key",
+        "secret-key"
+      ],
+      "properties": {
+        "access-key": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "secret-key": {
+          "type": "string"
+        }
+      },
+      "x-go-gen-location": "operations"
     }
   }
 }`))

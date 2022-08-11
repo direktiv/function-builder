@@ -14,17 +14,15 @@ import (
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/middleware"
 
-	"aws-cli/restapi/operations"
+	"app/restapi/operations"
 )
 
-//go:generate swagger generate server --target ../../v1.0.0 --name AwsCli --spec ../swagger.yaml --principal interface{}
+//go:generate swagger generate server --target ../../app --name Aws --spec ../../../swagger.yaml --template-dir /tmp/aws/build/templates --principal interface{}
 
-func configureFlags(api *operations.AwsCliAPI) {
+func configureFlags(api *operations.AwsAPI) {
 	// api.CommandLineOptionsGroups = []swag.CommandLineOptionsGroup{ ... }
 }
 
-// out.errCode = resp.Header.Get("Direktiv-ErrorCode")
-// out.errMsg = resp.Header.Get("Direktiv-ErrorMessage")
 func errorAsJSON(err errors.Error) []byte {
 	b, _ := json.Marshal(struct {
 		Code    int32  `json:"errorCode"`
@@ -115,7 +113,7 @@ func serveError(rw http.ResponseWriter, r *http.Request, err error) {
 
 }
 
-func configureAPI(api *operations.AwsCliAPI) http.Handler {
+func configureAPI(api *operations.AwsAPI) http.Handler {
 	// configure the api here
 	api.ServeError = serveError
 

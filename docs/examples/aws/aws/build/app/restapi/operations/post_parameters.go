@@ -14,14 +14,26 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/go-openapi/strfmt"
 	"github.com/go-openapi/validate"
+
+	"app/models"
 )
 
 // NewPostParams creates a new PostParams object
-//
-// There are no default values defined in the spec.
+// with the default values initialized.
 func NewPostParams() PostParams {
 
-	return PostParams{}
+	var (
+		// initialize parameters with default values
+
+		direktivActionIDDefault = string("development")
+		direktivTempDirDefault  = string("/tmp")
+	)
+
+	return PostParams{
+		DirektivActionID: &direktivActionIDDefault,
+
+		DirektivTempDir: &direktivTempDirDefault,
+	}
 }
 
 // PostParams contains all the bound params for the post operation
@@ -37,18 +49,20 @@ type PostParams struct {
 	For development it can be set to 'development'
 
 	  In: header
+	  Default: "development"
 	*/
 	DirektivActionID *string
 	/*direktiv temp dir is the working directory for that request
 	For development it can be set to e.g. '/tmp'
 
 	  In: header
+	  Default: "/tmp"
 	*/
 	DirektivTempDir *string
 	/*
 	  In: body
 	*/
-	Body PostBody
+	Body *models.PostParamsBody
 }
 
 // BindRequest both binds and validates a request, it assumes that complex things implement a Validatable(strfmt.Registry) error interface
@@ -70,7 +84,7 @@ func (o *PostParams) BindRequest(r *http.Request, route *middleware.MatchedRoute
 
 	if runtime.HasBody(r) {
 		defer r.Body.Close()
-		var body PostBody
+		var body models.PostParamsBody
 		if err := route.Consumer.Consume(r.Body, &body); err != nil {
 			res = append(res, errors.NewParseError("body", "body", "", err))
 		} else {
@@ -88,7 +102,7 @@ func (o *PostParams) BindRequest(r *http.Request, route *middleware.MatchedRoute
 			}
 
 			if len(res) == 0 {
-				o.Body = body
+				o.Body = &body
 			}
 		}
 	}
@@ -108,6 +122,7 @@ func (o *PostParams) bindDirektivActionID(rawData []string, hasKey bool, formats
 	// Required: false
 
 	if raw == "" { // empty values pass all other validations
+		// Default values have been previously initialized by NewPostParams()
 		return nil
 	}
 	o.DirektivActionID = &raw
@@ -125,6 +140,7 @@ func (o *PostParams) bindDirektivTempDir(rawData []string, hasKey bool, formats 
 	// Required: false
 
 	if raw == "" { // empty values pass all other validations
+		// Default values have been previously initialized by NewPostParams()
 		return nil
 	}
 	o.DirektivTempDir = &raw

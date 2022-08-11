@@ -10,13 +10,13 @@ import (
 
 	"github.com/go-openapi/runtime"
 
-	"aws-cli/models"
+	"app/models"
 )
 
 // PostOKCode is the HTTP code returned for type PostOK
 const PostOKCode int = 200
 
-/*PostOK nice greeting
+/*PostOK List of executed commands.
 
 swagger:response postOK
 */
