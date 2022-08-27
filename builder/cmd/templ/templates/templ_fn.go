@@ -19,7 +19,7 @@ for k,v := range params.Body{{ $rh }} {
 
 {{- define "HTTPDATA" }}
 attachData := func(paramsIn interface{}, ri *apps.RequestInfo) ([]byte, error) {
-
+	
 	kind, err := templateString(`{{ index .data "kind" }}`, paramsIn)
 	if err != nil {
 		return nil, err
@@ -34,7 +34,7 @@ attachData := func(paramsIn interface{}, ri *apps.RequestInfo) ([]byte, error) {
 		return os.ReadFile(filepath.Join(ri.Dir(), d))
 	} else if kind == "base64" {
 		return base64.StdEncoding.DecodeString(d)
-	}
+	} 
 
 	return []byte(d), nil
 	
@@ -553,12 +553,10 @@ func runCommand{{ $i }}(ctx context.Context,
 	{{- if index . "data" }}
 	{{ template "HTTPDATA" . }}
 
-	if params.Body.Content != nil {
-		data, err = attachData(at, ri)
-		if err != nil {
-			ir[resultKey] = err.Error()
-			return ir, err
-		}
+	data, err = attachData(at, ri)
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
 	}
 	{{- end }}
 

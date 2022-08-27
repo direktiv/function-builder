@@ -29,7 +29,7 @@ var gomod string
 //go:embed mod/gosum
 var gosum string
 
-var karateImage = "gcr.io/direktiv/apps/karate:1.0"
+var karateImage = "direktiv.azurecr.io/misc/karate"
 
 func init() {
 	loads.AddLoader(fmts.YAMLMatcher, fmts.YAMLDoc)
@@ -143,7 +143,11 @@ func writeTests() error {
 	}
 
 	// add states for each example
-	examples := post.Extensions["x-direktiv-examples"].([]interface{})
+
+	var examples []interface{}
+	if post.Extensions["x-direktiv-examples"] != nil {
+		examples = post.Extensions["x-direktiv-examples"].([]interface{})
+	}
 
 	// init state
 	workflow.States = make([]direktivmodel.State, 0)
@@ -344,13 +348,15 @@ func writeKarateTest(testPath string, secrets []interface{}, version string) err
 
 	workflow.States = append(workflow.States, &action)
 
-	err = writeKarateTestScript(secretStrings, version)
-	if err != nil {
-		return err
+	// only write test script if it does not exist
+	if _, err := os.Stat(filepath.Join(fnDir, "run-tests.sh")); errors.Is(err, os.ErrNotExist) {
+		err = writeKarateTestScript(secretStrings, version)
+		if err != nil {
+			return err
+		}
 	}
 
 	return writeTestFile(filepath.Join(testPath, "karate.yaml"), workflow)
-
 }
 
 func writeKarateTestScript(secrets []string, version string) error {

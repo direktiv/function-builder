@@ -316,7 +316,7 @@ cmds:
   env: ["KEY=value", "NAME={{ .Name }}"]
 ```
 
-The folowing attributes can be used:
+The following attributes can be used:
 
 ### error
 
@@ -344,7 +344,7 @@ This defines the environment variables for the command. Templating can be used f
 
 ### runtime-envs
 
-If runtime environment variables are required, meaning the client sends environment variables to the service, the `runtime-envs` attribute can be used to add them to the static list in `env`. This attibute contains a template which has to return a JSON array of strings in `KEY=VALUE` format. The folowing example is taken from the terraform service. 
+If runtime environment variables are required, meaning the client sends environment variables to the service, the `runtime-envs` attribute can be used to add them to the static list in `env`. This attibute contains a template which has to return a JSON array of strings in `KEY=VALUE` format. The following example is taken from the terraform service. 
 
 ```yaml
 runtime-envs: |
@@ -413,7 +413,7 @@ Although a HTTP request could be achieved with a `curl` command it is provided a
     }
 ```
 
-The folowing attributes can be used:
+The following attributes can be used:
 
 ### url / method
 
@@ -450,6 +450,7 @@ This can be used to add a payload to a POST request. This parameter is an object
 - string: Plain string data. Templates can be used with this kind. Value is the string to use.
 - base64: Base64 content will be converted into a byte array and send with the request. Value is the Base64 string. 
 - file: A file will be attached. Value is the file name. 
+- json (default): Treats value as JSON input
 
 ```yaml
 x-direktiv:  
@@ -552,6 +553,10 @@ paths:
       x-direktiv:
         cancel: echo 'cancel {{ .DirektivActionID }}'
 ```
+
+### Direktiv File
+
+
 
 ### Chaining Commands
 

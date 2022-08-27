@@ -46,6 +46,7 @@ func deref(dd interface{}) interface{} {
 	}
 }
 
+
 func templateString(tmplIn string, data interface{}) (string, error) {
 
 	{{- if $printDebug }}
@@ -58,6 +59,7 @@ func templateString(tmplIn string, data interface{}) (string, error) {
 		"deref": deref,
 		"file64": file64,
 	}).Parse(tmplIn)
+	
 	if err != nil {
 		{{- if $printDebug }}
 		fmt.Printf("template failed: %+v\n", err)
