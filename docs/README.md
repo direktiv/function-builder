@@ -556,6 +556,42 @@ paths:
 
 ### Direktiv File
 
+Sometimes applications need a file to execute or read configurations. For most cases Direktiv's variables can and should be used. But in case only a small file is needed the special type `direktivFile` is provided. This parameter takes three attributes: name for the name of the file, data for the content and mode is the filemode assigned to the file.
+
+**Direktiv File in Input**
+```yaml
+- name: body
+  in: body
+  schema:
+    type: object
+    required:
+      - name
+    properties:
+      script:
+        $ref: "#/definitions/direktivFile"
+```
+
+After receiving the request the data is written to a file with the name provided in the request. Templating is not supported because that should be done in Direktiv with JQ or Javascript before it is getting sent to the service. With the above definition the following JSON could be a potential input for that service:
+
+```json
+{
+	"script": {
+		"name": "shell.sh",
+		"data": "#!/bin/bash\n echo Hello",
+		"mode": "0755"
+	}
+}
+```
+
+This would create a file `shell.sh` with the content provided in `data` and permissions `0755`. It could be used in a command like this:
+
+**Example Usage of**
+```yaml
+x-direktiv:  
+  cmds:
+  - action: exec
+    exec: ./shell.sh
+
 
 
 ### Chaining Commands
