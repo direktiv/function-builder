@@ -29,7 +29,7 @@ var gomod string
 //go:embed mod/gosum
 var gosum string
 
-var karateImage = "direktiv.azurecr.io/functions/karate:1.0"
+var karateImage = "gcr.io/direktiv/functions/karate:1.0"
 
 func init() {
 	loads.AddLoader(fmts.YAMLMatcher, fmts.YAMLDoc)
