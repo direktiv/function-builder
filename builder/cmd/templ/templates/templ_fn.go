@@ -105,6 +105,14 @@ import (
 	"github.com/direktiv/apps/go/pkg/apps"
 	"github.com/go-openapi/strfmt"
 
+	{{- range $i,$e := $commands }}
+	// custom function imports
+	{{- if index (index $e) "package" }}
+	"app/{{- index (index $e) "package" }}"
+	{{- end }}
+	// end
+	{{- end }}
+
 {{ imports .DefaultImports }}
 )
 
@@ -204,7 +212,11 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 
 	{{- range $i,$e := $commands }}
 
+	{{- if index (index $e) "package" }}
+	ret, err = {{ index (index $e) "package" }}.{{ index (index $e) "func" }}(ctx, params.Body, ri)
+	{{- else }}
 	ret, err = runCommand{{ $i }}(ctx, accParams, ri)
+	{{- end }}
 
 	responses = append(responses, ret)
 
@@ -503,8 +515,11 @@ func runCommand{{ $i }}(ctx context.Context,
 		}
 		{{- end }}
 		
+		
+		if br.debug {
+			ri.Logger().Infof("requesting %v", br.url)
+		}
 
-		ri.Logger().Infof("requesting %v", br.url)
 		r, _ := doHttpRequest(br.debug, br.method, br.url, br.user, br.password, 
 			headers,br.insecure, br.err200, data)
 
@@ -560,7 +575,10 @@ func runCommand{{ $i }}(ctx context.Context,
 	}
 	{{- end }}
 
-	ri.Logger().Infof("requesting %v", br.url)
+	if br.debug {
+		ri.Logger().Infof("requesting %v", br.url)
+	}
+
 	return doHttpRequest(br.debug, br.method, br.url, br.user, br.password, 
 		headers, br.insecure, br.err200, data)
 

@@ -10,10 +10,11 @@ Creating a new app takes three steps: configuring the input, the command, and ou
     - [Adding Foreach](#adding-foreach)
     - [Adding HTTP Requests](#adding-http-requests)
     - [Adding HTTP Foreach](#adding-http-foreach)
+    - [Adding Custom Go Code](#adding-custom-go-code)
 - [Configuring the Output](#configuring-the-output)
 - [Compiling and Running the Service](#compiling-and-running-the-service)
 - [Advanced Features](#advanced-features) 
-    - [Delete Method](#delete-method) The swaggger UI is available 
+    - [Delete Method](#delete-method)
     - [Chaining Commands](#chaining-commands) 
     - [Direktiv File](#direktiv-file) 
 - [Secrets](#secrets) 
@@ -407,10 +408,12 @@ Although a HTTP request could be achieved with a `curl` command it is provided a
   insecure: true 
   errorNo200: true
   continue: true
-  data: |
-    {
-      "myname": "{{ .Name }}"
-    }
+  data:   
+    kind: string
+    value: |
+      {
+        "myname": "{{ .Name }}"
+      }
 ```
 
 The following attributes can be used:
@@ -488,6 +491,45 @@ HTTP Foreach uses the same attributes as the single HTTP request. It needs a `lo
     {
       "myname": "{{ .Body.Name }}"
     }
+```
+
+## Adding Custom Go Code
+
+In case custom Go code is required it can be included with the `package` and `func`.  The module directory needs to be created under the `build/app` folder. This folder can contain the source code for the functionality for this app. 
+
+
+```yaml
+- action: exec
+  package: twitter
+  func: DoTwitter
+```
+
+The golang source code requires one exported function. The parameter are the request context, the posted request body and a helper object to get a logger, the working directory and the Direktiv action ID. The object can be found here: https://github.com/direktiv/function-builder/blob/main/go/pkg/apps/requestinfo.go
+
+
+```go
+import (
+	"context"
+	"app/models"
+	"github.com/direktiv/apps/go/pkg/apps"
+)
+
+
+func DoSomething(ctx context.Context, body *models.PostParamsBody, ri *apps.RequestInfo) (map[string]interface{}, error) {
+  ri.Logger().Infof("Log me)
+	return nil, nil
+}
+```
+
+It is necessary to add the source folder to the Dockerfile like the following example shows.
+
+```Dockerfile
+...
+COPY build/app/cmd cmd/
+COPY build/app/models models/
+COPY build/app/restapi restapi/
+COPY build/app/myapp myapp/
+...
 ```
 
 ## Configuring the Output
@@ -703,15 +745,15 @@ During the generation phase function tests are getting generated based on the in
 
 This file is primarily for local testing. It use the [Karate API testing](https://github.com/karatelabs/karate) framework. If a service has been started with the `run.sh` file there is an additional `run-tests.sh` file which runs the tests in this file against the running function instance. The default behaviour is to run all tests in that file but individual scenarios can be tested adding `--name=scenario-name` to `run-tests.sh`. 
 
-**karate.yaml**
+<!-- **karate.yaml**
 
-To run thet test in Direktiv directly this karate.yaml flow is getting created. The whole project can be added as Direktiv namespace and tested within Direktiv itself. This flow requires a `host` parameter to define the target to test against. If it is locally that can be the local IP of the computer running the function with `run.sh`. The reason for this file is to include it in e.g. CI/CD flows. 
+To run thet test in Direktiv directly this karate.yaml flow is getting created. The whole project can be added as Direktiv namespace and tested within Direktiv itself. This flow requires a `host` parameter to define the target to test against. If it is locally that can be the local IP of the computer running the function with `run.sh`. The reason for this file is to include it in e.g. CI/CD flows.  -->
 
 **tests.yaml**
 
 This is a flow using the function in a regular flow in Direktiv. By default the image used has the pattern `gcr.io/direktiv/apps/<MYFUNCTION>:test`. This can be changed to e.g. `localhost:5000/<MYFUNCTION>` for local tests. 
 
-**karate-event.yaml / tests-event.yaml**
+**tests-event.yaml**
 
 This are support flows if the tests are getting triggered by events within Direktiv. It is useful if multiple functions are part of CI/CD and the tests are getting triggered by events with the function name. 
 
