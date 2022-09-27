@@ -163,23 +163,55 @@ func writeTests() error {
 			if states[i] != "" {
 				s := fmt.Sprintf("  id: %v", states[i])
 
-				var action direktivmodel.ActionState
-				err := yaml.Unmarshal([]byte(s), &action)
+				var common direktivmodel.StateCommon
+				err := yaml.Unmarshal([]byte(s), &common)
 				if err != nil {
 					return err
 				}
 
-				// 0th item is split before id:
-				if i == 1 {
-					action.ID = fmt.Sprintf("state%d", a)
+				switch common.Type {
+				case direktivmodel.StateTypeAction:
+					var action direktivmodel.ActionState
+					err = yaml.Unmarshal([]byte(s), &action)
+					if err != nil {
+						return err
+					}
+
+					// 0th item is split before id:
+					if i == 1 {
+						action.ID = fmt.Sprintf("state%d", a)
+					}
+
+					// last item transitions to next example
+					if a+1 != len(examples) && i+1 == len(states) {
+						action.Transition = fmt.Sprintf("state%d", a+1)
+					}
+
+					workflow.States = append(workflow.States, &action)
+				case direktivmodel.StateTypeNoop:
+
+					var action direktivmodel.NoopState
+					err = yaml.Unmarshal([]byte(s), &action)
+					if err != nil {
+						return err
+					}
+
+					// 0th item is split before id:
+					if i == 1 {
+						action.ID = fmt.Sprintf("state%d", a)
+					}
+
+					// last item transitions to next example
+					if a+1 != len(examples) && i+1 == len(states) {
+						action.Transition = fmt.Sprintf("state%d", a+1)
+					}
+
+					workflow.States = append(workflow.States, &action)
+
+				default:
+					return fmt.Errorf("Unsupported state in examples")
 				}
 
-				// last item transitions to next example
-				if a+1 != len(examples) && i+1 == len(states) {
-					action.Transition = fmt.Sprintf("state%d", a+1)
-				}
-
-				workflow.States = append(workflow.States, &action)
 			}
 
 		}
