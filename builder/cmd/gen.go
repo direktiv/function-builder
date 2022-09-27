@@ -318,10 +318,10 @@ func writeKarateTest(testPath string, secrets []interface{}, version string) err
 	}
 
 	// // write test.feature file
-	// err := writeTestFeatureFile(testPath, secretStrings)
-	// if err != nil {
-	// 	return err
-	// }
+	err := writeTestFeatureFile(testPath, secretStrings)
+	if err != nil {
+		return err
+	}
 
 	// // write workflow
 	// var workflow direktivmodel.Workflow
@@ -394,36 +394,34 @@ func writeKarateTest(testPath string, secrets []interface{}, version string) err
 
 func writeKarateTestScript(secrets []string, version string) error {
 
-	return nil
+	var sb strings.Builder
+	var karateArgs strings.Builder
 
-	// var sb strings.Builder
-	// var karateArgs strings.Builder
+	sb.WriteString("#!/bin/bash\n\n")
 
-	// sb.WriteString("#!/bin/bash\n\n")
+	sb.WriteString("if [[ -z \"${DIREKTIV_TEST_URL}\" ]]; then\n")
+	sb.WriteString("	echo \"Test URL is not set, setting it to http://localhost:9191\"\n")
+	sb.WriteString("	DIREKTIV_TEST_URL=\"http://localhost:9191\"\n")
+	sb.WriteString("fi\n\n")
 
-	// sb.WriteString("if [[ -z \"${DIREKTIV_TEST_URL}\" ]]; then\n")
-	// sb.WriteString("	echo \"Test URL is not set, setting it to http://localhost:9191\"\n")
-	// sb.WriteString("	DIREKTIV_TEST_URL=\"http://localhost:9191\"\n")
-	// sb.WriteString("fi\n\n")
+	for a := range secrets {
+		secret := secrets[a]
+		sb.WriteString(fmt.Sprintf("if [[ -z \"${DIREKTIV_SECRET_%s}\" ]]; then\n", secret))
+		sb.WriteString(fmt.Sprintf("	echo \"Secret %s is required, set it with DIREKTIV_SECRET_%s\"\n",
+			secret, secret))
+		sb.WriteString("	exit 1\n")
+		sb.WriteString("fi\n\n")
 
-	// for a := range secrets {
-	// 	secret := secrets[a]
-	// 	sb.WriteString(fmt.Sprintf("if [[ -z \"${DIREKTIV_SECRET_%s}\" ]]; then\n", secret))
-	// 	sb.WriteString(fmt.Sprintf("	echo \"Secret %s is required, set it with DIREKTIV_SECRET_%s\"\n",
-	// 		secret, secret))
-	// 	sb.WriteString("	exit 1\n")
-	// 	sb.WriteString("fi\n\n")
+		karateArgs.WriteString(fmt.Sprintf("-D%s=\"${DIREKTIV_SECRET_%s}\" ", secret, secret))
+	}
 
-	// 	karateArgs.WriteString(fmt.Sprintf("-D%s=\"${DIREKTIV_SECRET_%s}\" ", secret, secret))
-	// }
+	cmd := fmt.Sprintf("docker run --network=host -v `pwd`/tests/:/tests direktiv/karate "+
+		"java -DtestURL=${DIREKTIV_TEST_URL} -Dlogback.configurationFile=/logging.xml %s "+
+		"-jar /karate.jar /tests/v%s/karate.yaml.test.feature ${*:1}", karateArgs.String(), version)
 
-	// cmd := fmt.Sprintf("docker run --network=host -v `pwd`/tests/:/tests direktiv/karate "+
-	// 	"java -DtestURL=${DIREKTIV_TEST_URL} -Dlogback.configurationFile=/logging.xml %s "+
-	// 	"-jar /karate.jar /tests/v%s/karate.yaml.test.feature ${*:1}", karateArgs.String(), version)
+	sb.WriteString(cmd)
 
-	// sb.WriteString(cmd)
-
-	// return os.WriteFile(filepath.Join(fnDir, "run-tests.sh"), []byte(sb.String()), 0755)
+	return os.WriteFile(filepath.Join(fnDir, "run-tests.sh"), []byte(sb.String()), 0755)
 
 }
 
