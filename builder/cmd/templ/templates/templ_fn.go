@@ -24,10 +24,14 @@ attachData := func(paramsIn interface{}, ri *apps.RequestInfo) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	
 	d, err := templateString(`{{ index .data "value" }}`, paramsIn)
 	if err != nil {
 		return nil, err
+	}
+	
+	if string(d) == "empty" {
+		return []byte("{}"), nil
 	}
 
 	if kind == "file" {
@@ -35,7 +39,7 @@ attachData := func(paramsIn interface{}, ri *apps.RequestInfo) ([]byte, error) {
 	} else if kind == "base64" {
 		return base64.StdEncoding.DecodeString(d)
 	} 
-
+	
 	return []byte(d), nil
 	
 }
@@ -572,6 +576,11 @@ func runCommand{{ $i }}(ctx context.Context,
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
+	}
+
+	if br.debug {
+		ri.Logger().Infof("Payload:")
+		ri.Logger().Infof(string(data))
 	}
 	{{- end }}
 
