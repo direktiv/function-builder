@@ -233,7 +233,7 @@ func doHttpRequest(debug bool, method, u, user, pwd string,
 	for k, v := range headers {
 
 		// if it it is Authorization, we do a set
-		if k == "Authorization" {
+		if k == "Authorization" && v != "" {
 			req.Header.Set(k, v)
 		} else {
 			req.Header.Add(k, v)
