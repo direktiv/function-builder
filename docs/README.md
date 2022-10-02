@@ -455,6 +455,8 @@ This can be used to add a payload to a POST request. This parameter is an object
 - file: A file will be attached. Value is the file name. 
 - json (default): Treats value as JSON input
 
+If this value is set to "empty" the service sends an empty JSON body `{}`.
+
 ```yaml
 x-direktiv:  
   debug: true
