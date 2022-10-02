@@ -226,13 +226,19 @@ func doHttpRequest(debug bool, method, u, user, pwd string,
 	}
 	req.Close = true
 
-
-	for k, v := range headers {
-		req.Header.Add(k, v)
-	}
-
 	if user != "" {
 		req.SetBasicAuth(user, pwd)
+	}
+
+	for k, v := range headers {
+
+		// if it it is Authorization, we do a set
+		if k == "Authorization" {
+			req.Header.Set(k, v)
+		} else {
+			req.Header.Add(k, v)
+		}
+
 	}
 
 	jar, err := cookiejar.New(&cookiejar.Options{
@@ -252,7 +258,7 @@ func doHttpRequest(debug bool, method, u, user, pwd string,
 		fmt.Printf("method: %s, insecure: %v\n", method, insecure)
 		fmt.Printf("url: %s\n", req.URL.String())
 		fmt.Println("Headers:")
-		for k, v := range headers {
+		for k, v := range req.Header {
 			fmt.Printf("%v = %v\n", k, v)
 		}
 	}
