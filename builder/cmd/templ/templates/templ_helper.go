@@ -182,8 +182,10 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 		{{- end }}
 		b, err = os.ReadFile(output)
 		if err != nil {
-			ir[resultKey] = err.Error()
-			return ir, err
+			ri.Logger().Infof("output file %s not used", output)
+			// ir[resultKey] = err.Error()
+			// return ir, err
+			b = o.Bytes()
 		}
 	}
 
