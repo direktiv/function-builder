@@ -343,6 +343,10 @@ A command can be executed in `silent` mode which means it is not printing to the
 
 This defines the environment variables for the command. Templating can be used for the keys as well as the values.
 
+### workingdir
+
+This sets the workgin dir for the application. Instead of using the temporary Direktiv temporary this directory will be used.
+
 ### runtime-envs
 
 If runtime environment variables are required, meaning the client sends environment variables to the service, the `runtime-envs` attribute can be used to add them to the static list in `env`. This attibute contains a template which has to return a JSON array of strings in `KEY=VALUE` format. The following example is taken from the terraform service. 

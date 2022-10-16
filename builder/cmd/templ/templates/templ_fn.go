@@ -379,7 +379,13 @@ func runCommand{{ $i }}(ctx context.Context,
 	{{- end }}
 
 
-	return runCmd(ctx, cmd, envs, output, silent, print, ri)
+	workingDir, err := templateString(`{{ if ne .workingdir nil }}{{ .workingdir }}{{ end }}`, at)
+	if err != nil {
+		ir[resultKey] = err.Error()
+		return ir, err
+	}
+
+	return runCmd(ctx, cmd, envs, output, silent, print, ri, workingDir)
 
 }
 
@@ -456,7 +462,16 @@ func runCommand{{ $i }}(ctx context.Context,
 		envs = append(envs, addEnvs...)
 		{{- end }}
 
-		r, err := runCmd(ctx, cmd, envs, output, silent, print, ri)
+		workingDir, err := templateString(`{{ if ne .workingdir nil }}{{ .workingdir }}{{ end }}`, ls)
+		if err != nil {
+			ir := make(map[string]interface{})
+			ir[successKey] = false
+			ir[resultKey] = err.Error()
+			cmds = append(cmds, ir)
+			continue
+		}
+
+		r, err := runCmd(ctx, cmd, envs, output, silent, print, ri, workingDir)
 		if err != nil {
 			ir := make(map[string]interface{})
 			ir[successKey] = false
@@ -677,7 +692,13 @@ func DeleteDirektivHandle(params DeleteParams) middleware.Responder {
 		return NewDeleteOK()
 	}
 
-	_, err = runCmd(context.Background(), cmd, []string{}, "", false, true, ri)
+	path, err := os.Getwd()
+	if err != nil {
+		ri.Logger().Infof("can not template cancel command: %v", err)
+		return NewDeleteOK()
+	}
+
+	_, err = runCmd(context.Background(), cmd, []string{}, "", false, true, ri, path)
 	if err != nil {
 		ri.Logger().Infof("error running cancel function: %v", err)
 	}
