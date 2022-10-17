@@ -106,7 +106,8 @@ func convertTemplateToBool(template string, data interface{}, defaultValue bool)
 }
 
 func runCmd(ctx context.Context, cmdString string, envs []string,
-	output string, silent, print bool, ri *apps.RequestInfo) (map[string]interface{}, error) {
+	output string, silent, print bool, ri *apps.RequestInfo, 
+	workingDir string) (map[string]interface{}, error) {
 
 	{{- if $printDebug }}
 	fmt.Printf("evironment vars: %+v\n", envs)
@@ -149,10 +150,23 @@ func runCmd(ctx context.Context, cmdString string, envs []string,
 	cmd := exec.CommandContext(ctx, bin, argsIn...)
 	cmd.Stdout = mwStdout
 	cmd.Stderr = mwStdErr
-	cmd.Dir = ri.Dir()
+
+	wd := ri.Dir()
+
+	// working dir
+	if workingDir != "" {
+		err = os.MkdirAll(workingDir, 0755)
+		if err != nil {
+			ir[resultKey] = err.Error()
+			return ir, err
+		}
+		wd = workingDir
+	}
+
+	cmd.Dir = wd
 
 	// change HOME
-	curEnvs := append(os.Environ(), fmt.Sprintf("HOME=%s", ri.Dir()))
+	curEnvs := append(os.Environ(), fmt.Sprintf("HOME=%s", wd))
 	cmd.Env = append(curEnvs, envs...)
 
 	if print {
