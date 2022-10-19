@@ -18,14 +18,14 @@ for k,v := range params.Body{{ $rh }} {
 
 
 {{- define "HTTPDATA" }}
-attachData := func(paramsIn interface{}, ri *apps.RequestInfo) ([]byte, error) {
+attachData := func(paramsIn interface{}, ri *apps.RequestInfo, dir string) ([]byte, error) {
 	
-	kind, err := templateString(`{{ index .data "kind" }}`, paramsIn)
+	kind, err := templateString(`{{ index .data "kind" }}`, paramsIn, dir)
 	if err != nil {
 		return nil, err
 	}
 	
-	d, err := templateString(`{{ index .data "value" }}`, paramsIn)
+	d, err := templateString(`{{ index .data "value" }}`, paramsIn, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -52,24 +52,24 @@ type baseRequest struct {
 	insecure, err200, debug bool
 }
 
-baseInfo := func(paramsIn interface{}) (*baseRequest, error) {
+baseInfo := func(paramsIn interface{}, dir string) (*baseRequest, error) {
 
-	u, err := templateString(`{{ .url }}`, paramsIn)
+	u, err := templateString(`{{ .url }}`, paramsIn, dir)
 	if err != nil {
 		return nil, err
 	}
 
-	method, err := templateString(`{{ .method }}`, paramsIn)
+	method, err := templateString(`{{ .method }}`, paramsIn, dir)
 	if err != nil {
 		return nil, err
 	}
 
-	user, err := templateString(`{{ .username }}`, paramsIn)
+	user, err := templateString(`{{ .username }}`, paramsIn, dir)
 	if err != nil {
 		return nil, err
 	}
 
-	password, err := templateString(`{{ .password }}`, paramsIn)
+	password, err := templateString(`{{ .password }}`, paramsIn, dir)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +268,7 @@ func PostDirektivHandle(params PostParams) middleware.Responder {
 	fmt.Printf("object going in output template: %+v\n", responses)
 	{{- end}}
 
-	s, err := templateString(`{{ $direktiv.output }}`, responses)
+	s, err := templateString(`{{ $direktiv.output }}`, responses, ri.Dir())
 	if err != nil {
 		return generateError(outErr, err)
 	}
@@ -344,7 +344,7 @@ func runCommand{{ $i }}(ctx context.Context,
 	fmt.Printf("object going in command template: %+v\n", at)
 	{{- end}}
 
-	cmd, err := templateString(`{{ .exec }}`, at)
+	cmd, err := templateString(`{{ .exec }}`, at, params.DirektivDir)
 	if err != nil {
 		ri.Logger().Infof("error executing command: %v", err)
 		ir[resultKey] = err.Error()
@@ -358,13 +358,13 @@ func runCommand{{ $i }}(ctx context.Context,
 
 	envs := []string{}
 	{{- range $i,$e := .env }}
-		env{{ $i }}, _ := templateString(`{{ $e }}`, at) 
+		env{{ $i }}, _ := templateString(`{{ $e }}`, at, params.DirektivDir) 
 		envs = append(envs, env{{ $i }})
 	{{- end }} 
 
 	{{ $rh := index . "runtime-envs"}}
 	{{- if $rh }}
-	envTempl, err := templateString(`{{ $rh }}`, at) 
+	envTempl, err := templateString(`{{ $rh }}`, at, params.DirektivDir) 
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
@@ -379,7 +379,7 @@ func runCommand{{ $i }}(ctx context.Context,
 	{{- end }}
 
 
-	workingDir, err := templateString(`{{ if ne .workingdir nil }}{{ .workingdir }}{{ end }}`, at)
+	workingDir, err := templateString(`{{ if ne .workingdir nil }}{{ .workingdir }}{{ end }}`, at, params.DirektivDir)
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
@@ -420,7 +420,7 @@ func runCommand{{ $i }}(ctx context.Context,
 		fmt.Printf("object going in command template: %+v\n", ls)
 		{{- end}}
 
-		cmd, err := templateString(`{{ .exec }}`, ls)
+		cmd, err := templateString(`{{ .exec }}`, ls, params.DirektivDir)
 		if err != nil {
 			ir := make(map[string]interface{})
 			ir[successKey] = false
@@ -436,13 +436,13 @@ func runCommand{{ $i }}(ctx context.Context,
 
 		envs := []string{}
 		{{- range $i,$e := .env }}
-			env{{ $i }}, _ := templateString(`{{ $e }}`, ls) 
+			env{{ $i }}, _ := templateString(`{{ $e }}`, ls, params.DirektivDir) 
 			envs = append(envs, env{{ $i }})
 		{{- end }} 
 
 		{{ $rh := index . "runtime-envs"}}
 		{{- if $rh }}
-		envTempl, err := templateString(`{{ $rh }}`, ls) 
+		envTempl, err := templateString(`{{ $rh }}`, ls, params.DirektivDir) 
 		if err != nil {
 			ir := make(map[string]interface{})
 			ir[successKey] = false
@@ -462,7 +462,8 @@ func runCommand{{ $i }}(ctx context.Context,
 		envs = append(envs, addEnvs...)
 		{{- end }}
 
-		workingDir, err := templateString(`{{ if ne .workingdir nil }}{{ .workingdir }}{{ end }}`, ls)
+		workingDir, err := templateString(`{{ if ne .workingdir nil }}{{ .workingdir }}{{ end }}`, 
+			s, params.DirektivDir)
 		if err != nil {
 			ir := make(map[string]interface{})
 			ir[successKey] = false
@@ -686,7 +687,7 @@ func DeleteDirektivHandle(params DeleteParams) middleware.Responder {
 	ri.Logger().Infof("cancelling action id %v", actionId)
 	cinfo.cf()
 
-	cmd, err := templateString("{{ $direktiv.cancel }}", params)
+	cmd, err := templateString("{{ $direktiv.cancel }}", params, ri.Dir())
 	if err != nil {
 		ri.Logger().Infof("can not template cancel command: %v", err)
 		return NewDeleteOK()
