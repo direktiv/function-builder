@@ -463,7 +463,7 @@ func runCommand{{ $i }}(ctx context.Context,
 		{{- end }}
 
 		workingDir, err := templateString(`{{ if ne .workingdir nil }}{{ .workingdir }}{{ end }}`, 
-			s, params.DirektivDir)
+			ls, params.DirektivDir)
 		if err != nil {
 			ir := make(map[string]interface{})
 			ir[successKey] = false
