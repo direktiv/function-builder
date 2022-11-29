@@ -462,8 +462,7 @@ func runCommand{{ $i }}(ctx context.Context,
 		envs = append(envs, addEnvs...)
 		{{- end }}
 
-		workingDir, err := templateString(`{{ if ne .workingdir nil }}{{ .workingdir }}{{ end }}`, 
-			s, params.DirektivDir)
+		workingDir, err := templateString(`{{ if ne .workingdir nil }}{{ .workingdir }}{{ end }}`, ls, params.DirektivDir)
 		if err != nil {
 			ir := make(map[string]interface{})
 			ir[successKey] = false
