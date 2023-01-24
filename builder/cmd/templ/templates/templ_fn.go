@@ -4,7 +4,7 @@ package {{.Package}}
 headers := make(map[string]string)
 {{- range $i,$h := .headers }}
 {{- range $k,$v := $h }}
-Header{{ $i }}, err := templateString(`{{ $v }}`, params)
+Header{{ $i }}, err := templateString(`{{ $v }}`, params, ri.Dir())
 headers["{{ $k }}"] = Header{{ $i }}
 {{- end }}
 {{- end }}
