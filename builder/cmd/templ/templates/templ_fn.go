@@ -4,7 +4,7 @@ package {{.Package}}
 headers := make(map[string]string)
 {{- range $i,$h := .headers }}
 {{- range $k,$v := $h }}
-Header{{ $i }}, err := templateString(`{{ $v }}`, params)
+Header{{ $i }}, err := templateString(`{{ $v }}`, params, ri.Dir())
 headers["{{ $k }}"] = Header{{ $i }}
 {{- end }}
 {{- end }}
@@ -518,7 +518,7 @@ func runCommand{{ $i }}(ctx context.Context,
 		}
 
 		{{ template "HTTPBASE" . }}
-		br, err := baseInfo(ls)
+		br, err := baseInfo(ls, ri.Dir())
 		if err != nil {
 			return cmds, err
 		}	
@@ -528,7 +528,7 @@ func runCommand{{ $i }}(ctx context.Context,
 		var data []byte
 		{{- if index . "data" }}
 		{{ template "HTTPDATA" . }}
-		data, err = attachData(ls, ri)
+		data, err = attachData(ls, ri, ri.Dir())
 		if err != nil {
 			return cmds, err
 		}
@@ -575,7 +575,7 @@ func runCommand{{ $i }}(ctx context.Context,
 	ir[successKey] = false
 
 	{{ template "HTTPBASE" . }}
-	br, err := baseInfo(at)
+	br, err := baseInfo(at, ri.Dir())
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
@@ -587,7 +587,7 @@ func runCommand{{ $i }}(ctx context.Context,
 	{{- if index . "data" }}
 	{{ template "HTTPDATA" . }}
 
-	data, err = attachData(at, ri)
+	data, err = attachData(at, ri,  ri.Dir())
 	if err != nil {
 		ir[resultKey] = err.Error()
 		return ir, err
